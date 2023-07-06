@@ -1,0 +1,170 @@
+# The text below was generated automatically by
+# the popy.conf.fio.pyml_writer module
+# Date: 2019-09-03-14-32-01
+# Code rev.: r4533-f2d9a3d34535d82b1551f5531d9df5a58d48c0f4+
+---
+
+METHOD_OPTIONS:
+    # Python module required to process this script file
+    py_module: fit
+
+    # Option to set seed to make run result
+    # reproducible -e.g. when debugging.
+    rand_seed: 12345
+
+    # Format string for numerical output
+    float_format: default
+
+PARALLEL:
+    # SINGLE: {}
+    MPI_WORKERS: {n_workers: 4}
+    
+DESCRIPTION:
+    # Unique name used to distinguish script
+    name: builtin_fit_example
+
+    # A longer text string that could serve as a title
+    title: First order absorption model with peripheral compartment
+
+    # Author of the model
+    author: PoPy for PK/PD
+
+    # Abstract paragraph describing model
+    abstract: |
+        A two compartment PK model with bolus dose and
+        first order absorption, similar to a Nonmem advan4trans4 model.
+
+    # Keywords list used to categorise models.
+    keywords: ['fitting', 'pk', 'advan4', 'dep_two_cmp', 'first order']
+
+FILE_PATHS:
+    # path to input comma separated value file in popy data format
+    input_data_file: builtin_fit_example_data.csv
+
+    # Output folder - results of computation stored here
+    output_folder: auto
+
+    # Temp folder - temporary files stored here
+    temp_folder: auto
+
+    # Log folder - log files stored here
+    log_folder: auto
+
+    # Output file extension - determines graphical output file format.
+    output_file_ext: ['svg', 'pdf']
+
+    # Solution containing f[X] values from a previous run.
+    input_solution_file: none
+
+    # Option to output iteration-by-iteration values.
+    output_iteration_results: True
+
+DATA_FIELDS:
+    # Field name in data file that contains row type info, e.g. obs/dose etc
+    type_field: TYPE
+
+    # Field name in data file that contains identity string for each data row e.g. obs/dose etc
+    id_field: ID
+
+    # Field name in data file that contains time or event for each data row
+    time_field: TIME
+
+# Code that preprocesses the input data.
+# Use this to filter rows and create derived covariates.
+PREPROCESS: |
+
+EFFECTS:
+    # This is the root record
+    POP: |
+        f[KA] ~ P1.0
+        f[CL] ~ P1.0
+        f[V1] ~ P20
+        f[Q] ~ P0.5
+        f[V2] ~ P100
+        f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv] ~ spd_matrix() [
+            [0.05],
+            [0.01, 0.05],
+            [0.01, 0.01, 0.05],
+            [0.01, 0.01, 0.01, 0.05],
+            [0.01, 0.01, 0.01, 0.01, 0.05],
+        ]
+        f[PNOISE] ~ P0.1
+
+    # This is the root record
+    ID: |
+        r[KA, CL, V1, Q, V2] ~ mnorm([0,0,0,0,0], f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv])
+
+# Defines the mapping from c[X], f[X] and r[X] variables to individual model m[X] parameters.
+MODEL_PARAMS: |
+    m[KA] = f[KA] * exp(r[KA])
+    m[CL] = f[CL] * exp(r[CL])
+    m[V1] = f[V1] * exp(r[V1])
+    m[Q] = f[Q] * exp(r[Q])
+    m[V2] = f[V2] * exp(r[V2])
+    m[ANOISE] = 0.001
+    m[PNOISE] = f[PNOISE]
+
+# Optional section for setting initial values of s[X] variables
+# can also set slabel[X] text labels.
+STATES: |
+
+# Define how the covariates and effects determine flows
+# between compartments.
+DERIVATIVES: |
+    # s[DEPOT,CENTRAL,PERI] = @dep_two_cmp_cl{dose:@bolus{amt:c[AMT]}}
+    d[DEPOT] = @bolus{amt:c[AMT]} - m[KA]*s[DEPOT]
+    d[CENTRAL] = m[KA]*s[DEPOT] - s[CENTRAL]*m[CL]/m[V1] - s[CENTRAL]*m[Q]/m[V1]  + s[PERI]*m[Q]/m[V2]
+    d[PERI] = s[CENTRAL]*m[Q]/m[V1] - s[PERI]*m[Q]/m[V2]
+
+# Define the final predicted m[X] variables to be output
+# by the compartment model system.
+PREDICTIONS: |
+    p[CEN] = s[CENTRAL]/m[V1]
+    var = m[ANOISE]**2 + m[PNOISE]**2 * p[CEN]**2
+    c[DV_CENTRAL] ~ norm(p[CEN], var)
+
+ODE_SOLVER:
+    CPPLSODA:
+        # Absolute tolerance of ode solver.
+        atol: 1e-06
+
+        # Relative tolerance of ode solver.
+        rtol: 1e-06
+
+        # Maximum number of steps allowed in ode solver.
+        max_nsteps: 10000000
+
+        # Option to use sensitivity equations in ode solver.
+        use_sens: True
+
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+
+COVARIANCE:
+    NO_COVARIANCE: {}
+
+OUTPUT_SCRIPTS:
+    GRPH:
+        # Output options.
+        output_mode: none
+
+    SIM:
+        # Output options.
+        output_mode: run
+
+        # Size of time step when creating smooth curve predictions
+        # note setting this to a negative value, results in
+        # simulated predictions for each individual
+        # ONLY at time points in the original data set.
+        #
+        sim_time_step: 1.0
+
+    MSIM:
+        # Output options.
+        output_mode: create
+
+    FITSUM:
+        # Output options.
+        output_mode: run

@@ -1,0 +1,71 @@
+# The text below was generated automatically by
+# the popy.conf.fio.pyml_writer module
+---
+
+METHOD_OPTIONS:
+    # Python module required to process this script file
+    py_module: p2ndat
+    
+FILE_PATHS:
+    # path to input comma separated value file in popy data format
+    input_popy_file: ../fit_example1/fit_example1_data.csv
+    # path to output nonmem file to be created by script
+    output_nonmem_file: fit_example1_nm_data.csv
+    
+INPUT_POPY_FIELDS:
+    # Name of input popy time field
+    time_field: TIME
+    # Name of input popy id field
+    id_field: ID
+    # Name of input popy type field
+    type_field: TYPE
+    # List of input popy fields containing
+    # dependent value amount information
+    #
+    dv_fields: ['DV_CENTRAL']
+    # List of input popy columns containing dosing amount information
+    amt_fields: ['AMT']
+    # List of input popy columns containing infusion rate information
+    rate_fields: []
+    # List of input popy columns containing infusion duration information
+    dur_fields: []
+    # List of input popy dose label values within
+    # the TYPE field that define different types of dose
+    dose_labels: ['']
+    
+OUTPUT_NONMEM_FIELDS:
+    # Characters used to indicate a comment line
+    comment_prefix: '#'
+    # List of column names.
+    # "auto" takes names from first row of dataset
+    column_names: auto
+    # Name of output nonmem time field
+    time_field: TIME
+    # Name of output nonmem id field
+    id_field: ID
+    # Name of output nonmem evid field
+    evid_field: EVID
+    # Name of output nonmem dependent value field
+    dv_field: DV
+    # Name of output nonmem missing dependent value column
+    mdv_field: MDV
+    # Name of output nonmem dose amount column
+    amt_field: AMT
+    # Name of output nonmem infusion rate column (e.g. RATE)
+    rate_field: none
+    # Name of output nonmem infusion duration column (e.g. DUR)
+    dur_field: none
+    # Name of output nonmem compartment column
+    cmt_field: CMT
+    # For each output nonmem dv field specify
+    # a compartment number has to be same length as PoPy
+    # dv_fields list
+    obs_cmt_numbers: [1]
+    # For each output nonmem amt field specify a
+    # compartment number, has to be same length as PoPy
+    # amt_fields list
+    dose_cmt_numbers: [1]
+
+OUTPUT_OPTIONS:
+    # field to remove from output
+    drop_fields: ['TYPE', 'DV_CENTRAL', 'DV_CENTRAL_FLAG']

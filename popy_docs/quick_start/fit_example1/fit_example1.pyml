@@ -1,0 +1,47 @@
+METHOD_OPTIONS: 
+    py_module: fit
+    rand_seed: 12345
+    # float_format: nonmem
+    float_format: default
+# PARALLEL: {MPI_WORKERS: {n_workers: 4}}
+DESCRIPTION:
+    name: fit_example1
+    title: Simple Fit Example
+    author: PoPy for PK/PD
+    abstract: |
+        One compartment model with elimination rate constant KE.
+    keywords: ['one compartment model', 'iv_one_cmp_k']
+FILE_PATHS:
+    input_data_file: fit_example1_data.csv
+    output_file_ext: ['svg', 'pdf']
+EFFECTS:
+    POP: |
+        f[KE] ~ unif(0.001, 100) 0.05
+        f[PNOISE] ~ unif(0.001, 100) 0.1
+        f[KE_isv] ~ unif(0.001, 100) 0.1
+    ID: |
+        r[KE] ~ norm(0, f[KE_isv])
+MODEL_PARAMS: |
+    m[KE] = f[KE] * exp(r[KE])
+    m[PNOISE] = f[PNOISE]
+    m[ANOISE] = 0.001
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT]} - m[KE]*s[CENTRAL]
+PREDICTIONS: |
+    p[CEN] = s[CENTRAL]
+    var = (p[CEN]*m[PNOISE])**2 + m[ANOISE]**2
+    c[DV_CENTRAL] ~ norm(p[CEN], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    SIM: 
+        output_mode: run
+        sim_time_step: 1.0
+    MSIM: 
+        output_mode: run
+        vpc_list: ['OBS_vs_TIME_VPC']
+    FITSUM: 
+        output_mode: run

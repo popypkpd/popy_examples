@@ -1,0 +1,60 @@
+METHOD_OPTIONS: 
+    py_module: mtut
+    rand_seed: 12345
+    # float_format: nonmem
+    float_format: default
+DESCRIPTION:
+    name: mtut_example1
+    title: Simple Tut Example
+    author: PoPy for PK/PD
+    abstract: |
+        One compartment model with elimination rate constant KE.
+    keywords: ['one compartment model']
+# PARALLEL: {MPI_WORKERS: {n_workers: 4}}
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[AMT] = 100.0
+        # f[KE] = 0.1
+        f[KE] ~ unif(0.05,0.15)
+        # f[PNOISE] = 0.05
+        f[PNOISE] ~ unif(0.02,0.08)
+        # f[KE_isv] = 0.03
+        f[KE_isv] ~ unif(0.01,0.05)
+    ID: |
+        c[ID] = sequential(20)
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 50.0; 5)
+        r[KE] ~ norm(0, f[KE_isv])
+FIT_EFFECTS:
+    POP: |
+        # f[KE] ~ unif(0.001, 100) 0.05
+        f[KE] ~ P 0.1
+        # f[PNOISE] ~ unif(0.001, 100) 0.1
+        f[PNOISE] ~ P 0.05
+        # f[KE_isv] ~ unif(0.001, 100) 0.1
+        f[KE_isv] ~ P 0.03
+    ID: |
+        r[KE] ~ norm(0, f[KE_isv])
+MODEL_PARAMS: |
+    m[KE] = f[KE] * exp(r[KE])
+    m[PNOISE] = f[PNOISE]
+    m[ANOISE] = 0.001
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT]} - m[KE]*s[CENTRAL]
+PREDICTIONS: |
+    p[CEN] = s[CENTRAL]
+    var = (p[CEN]*m[PNOISE])**2 + m[ANOISE]**2
+    c[DV_CENTRAL] ~ norm(p[CEN], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_OPTIONS: 
+    n_pop_samples: 30
+    # n_pop_samples: 3
+OUTPUT_SCRIPTS:
+    MGEN: {output_mode: run}
+    MFIT: {output_mode: run}
+    MCOMP: {output_mode: run}
