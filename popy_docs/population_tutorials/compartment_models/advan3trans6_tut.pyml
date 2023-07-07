@@ -1,0 +1,79 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: advan3trans6_pop
+    title: Nonmem ADVAN3 TRANS6 example
+    author: PoPy for PK/PD
+    abstract: |
+        ADVAN 3 TRANS6 problem. Central compartment with a peripheral compartment.
+        trans 6 parameters:-
+        * K21 is the rate from the peripheral to the central compartment
+        * ALPHA
+        * BETA
+        map to advan3 parameters:-
+        * K21 = K21
+        * K12 = ALPHA+BETA-K21-K
+        * KE = APLHA*BETA/K21
+        ALPHA<K21<BETA. This must be true for model to work.
+    keywords: ['advan3', 'trans6', 'two compartment model']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[ALPHA] = 0.2
+        f[DIFFALPHAK21] = 0.3
+        f[DIFFK21BETA] = 0.3
+        f[PNOISE] = 0.01
+        f[ANOISE] = 0.01
+        c[AMT] = 100.0
+        f[ALPHA_isv, DIFFALPHAK21_isv, DIFFK21BETA_isv] = [[0.1, 0.0, 0.0],
+                                                           [0.0, 0.05, 0.0],
+                                                           [0.0, 0.0, 0.02]]
+    ID: |
+        c[ID] = sequential(30)
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 50.0; 20)
+        # t[OBS] = range(1.0, 50.0; 20)
+        # t[OBS] = range(1.0, 50.0; 5)
+        r[ALPHA, DIFFALPHAK21, DIFFK21BETA] ~ mnorm( [0,0,0], f[ALPHA_isv, DIFFALPHAK21_isv, DIFFK21BETA_isv] )
+FIT_EFFECTS:
+    POP: |
+        f[ALPHA] ~ unif(0.001, 1) 0.1
+        f[DIFFALPHAK21] ~ unif (0.001, 1) 0.2
+        f[DIFFK21BETA] ~ unif (0.001, 1) 0.2
+        f[PNOISE] ~ unif(0.001, 1) 0.05
+        f[ANOISE] ~ unif(0.001, 1) 0.05
+        f[ALPHA_isv, DIFFALPHAK21_isv, DIFFK21BETA_isv] ~ spd_matrix() [[0.04],
+                                                                        [0.0, 0.08],
+                                                                        [0.0, 0.0, 0.07]]
+    ID: |
+        r[ALPHA, DIFFALPHAK21, DIFFK21BETA] ~ mnorm( [0,0,0], f[ALPHA_isv, DIFFALPHAK21_isv, DIFFK21BETA_isv] )
+MODEL_PARAMS: |
+    m[ALPHA] = f[ALPHA] * exp (r[ALPHA])
+    m[DIFFALPHAK21] = f[DIFFALPHAK21] * exp(r[DIFFALPHAK21])
+    m[DIFFK21BETA] = f[DIFFK21BETA] * exp (r[DIFFK21BETA])
+    m[K21] = m[ALPHA] + m[DIFFALPHAK21]
+    m[BETA] = m[K21] + m[DIFFK21BETA]
+    m[KE] = m[ALPHA]*m[BETA]/m[K21]
+    m[K12] = m[ALPHA]+m[BETA]-m[K21]-m[KE]
+    m[PNOISE] = f[PNOISE]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    # s[CENTRAL,PERI] = @iv_two_cmp_k{ dose: @bolus{amt:c[AMT]} }
+    d[CENTRAL] = @bolus{amt:c[AMT], lag:0} - m[K12]*s[CENTRAL] + m[K21]*s[PERI] - m[KE]*s[CENTRAL]
+    d[PERI] = m[K12]*s[CENTRAL] - m[K21]*s[PERI]
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = 'Drug conc'
+    p[DV_CENTRAL] = s[CENTRAL]
+    var = (p[DV_CENTRAL] * m[PNOISE])**2 + m[ANOISE]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 75000}}
+# FIT_METHODS: [JOE: {max_n_main_iterations: 30}]
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

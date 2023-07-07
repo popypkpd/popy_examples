@@ -1,0 +1,63 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: emax_complex
+    title: Complex Emax PD Model
+    author: PoPy for PK/PD
+    abstract: |
+        An complex emax PK/PD Model, based on the concentration of drug in the body.
+        The two compartment PK model uses previously estimated values of CL, V1, Q and V2 for each individual
+        The concentration in the central compartment influences the effect compartment along with EMAX (the maximum effect), EC50 (the concentration at which the effect is half the maximum) using a hill equation.
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[CL] ~ unif(1,5)
+        c[Q] ~ unif(0.8,1.6)
+        c[V1] ~ unif(5,15)
+        c[V2] ~ unif(15,30)
+        f[EMAX] = 80
+        f[E50] = 20
+        f[GAMMA] = 0.5
+        f[ANOISE] = 3
+FIT_EFFECTS:
+    POP: |
+        f[EMAX] ~ unif(1, 1000) 100
+        f[E50] ~ unif (0.1, 1000) 10
+        f[GAMMA] ~ unif(0.1, 10) 1
+        f[ANOISE] ~ unif(0.001, 10) 5
+MODEL_PARAMS: |
+    m[EMAX] = f[EMAX]
+    m[E50] = f[E50]
+    m[GAMMA] = f[GAMMA]
+    m[K] = c[CL]/c[V1]
+    m[K12] = c[Q]/c[V1]
+    m[K21] = c[Q]/c[V2]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT], lag:0}
+    d[PERI] = 0
+    d[CENTRAL->PERI] += m[K12]*s[CENTRAL]
+    d[PERI->CENTRAL] += m[K21]*s[PERI]
+    d[CENTRAL] -= m[K]*s[CENTRAL]
+    conc_central = s[CENTRAL] / c[V1]
+    d[RES] = m[EMAX] * conc_central**m[GAMMA] / (m[E50]**m[GAMMA] + conc_central**m[GAMMA])
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[RES] = 'Response'
+    p[RES] = s[RES]
+    var = m[ANOISE]**2
+    c[RES] ~ norm(p[RES], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

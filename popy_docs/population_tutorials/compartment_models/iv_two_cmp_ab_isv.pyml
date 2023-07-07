@@ -1,0 +1,66 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: iv_two_cmp_ab_isv
+    title: Population Two Compartment Model with AOB transformation and Inter-subject Variance
+    author: PoPy for PK/PD
+    abstract: |
+        Population One Compartment Model and Inter-subject Variance
+    keywords: ['two compartment model', 'iv_two_cmp_ab', 'additive noise', 'AOB transform']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[AOB] = 2.3187293044088437
+        f[ALPHA] = 0.41374586088176873
+        f[BETA] = 0.036254139118231256
+        f[AOB_isv, ALPHA_isv, BETA_isv] ~ diag_matrix() [2.61803399,  1.17082039,  0.17082039]
+        f[ANOISE_STD] = 5.0
+    ID: |
+        c[ID] = sequential(20)
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
+        r[AOB, ALPHA, BETA] ~ mnorm( [0,0,0], f[AOB_isv, ALPHA_isv, BETA_isv] )
+FIT_EFFECTS:
+    POP: |
+        f[AOB] ~ unif(0.01, 10) 2.61803398875
+        f[ALPHA] ~ unif(0.001, 10) 1.30901699437
+        f[BETA] ~ unif(0.001, 10) 0.190983005625
+        f[AOB_isv, ALPHA_isv, BETA_isv] ~ diag_matrix() [2.61803399,  0.2618034,   0.0381966]
+        f[ANOISE_STD] ~ P 100.0
+    ID: |
+        r[AOB, ALPHA, BETA] ~ mnorm( [0,0,0], f[AOB_isv, ALPHA_isv, BETA_isv] )
+MODEL_PARAMS: |
+    # Compartment model parameters
+    m[AOB] = f[AOB]*exp(r[AOB])
+    m[ALPHA] = f[ALPHA]*exp(r[ALPHA])
+    m[BETA] = f[BETA]*exp(r[BETA])
+    # Noise parameters
+    m[ANOISE_STD] = f[ANOISE_STD]
+DERIVATIVES: |
+    K21 = (m[AOB]*m[BETA] + m[ALPHA])/(m[AOB] + 1)
+    KE  = m[ALPHA]*m[BETA]/K21
+    K12 = m[ALPHA] + m[BETA] - K21 - KE
+    # initialize flows to zero
+    d[CENTRAL] = 0.0
+    d[PERI] = 0.0
+    # define flows between compartments
+    d[CENTRAL] += @bolus{amt:c[AMT]}  # dose in
+    d[CENTRAL->PERI] += K12*s[CENTRAL]
+    d[PERI->CENTRAL] += K21*s[PERI]
+    d[CENTRAL] -= KE*s[CENTRAL]  # elimination out
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = 'Drug conc'
+    p[DV_CENTRAL] = s[CENTRAL]
+    var = m[ANOISE_STD]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 50000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

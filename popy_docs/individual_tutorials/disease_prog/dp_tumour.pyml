@@ -1,0 +1,54 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: dp_tumour
+    title: tumour_growth_model
+    author: Andrew Cristinacce @ PoPy for PK/PD
+    abstract: |
+        Specifies both the pop_gen and pop_fit subscripts.
+        A disease progression model, based on the concentration of drug in the central compartment.
+        The amount in the central compartment is determined by CL/V, which has been previously estimated for each individual.
+        The disease increases linearly over time, but is initially reduced by the drug concentration.
+    keywords: ['PD', 'Pharmacodynamics', 'one compartment model', 'absorption', 'tumour growth']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[SIZE] ~ unif(10,20)
+        c[KA] ~ unif(2,4)
+        c[CL] ~ unif(1,5)
+        c[V] ~ unif(10,30)
+        f[KIN] = 0.02
+        f[KOUT] = 0.05
+        f[ANOISE] = 0.5
+FIT_EFFECTS:
+    POP: |
+        f[KIN] ~ unif (0.001, 10) 0.05
+        f[KOUT] ~ unif (0.001, 10) 0.1
+        f[ANOISE] ~ unif(0.001, 100) 0.2
+MODEL_PARAMS: |
+    m[KIN] = f[KIN]
+    m[KOUT] = f[KOUT]
+    m[ANOISE] = f[ANOISE]
+STATES: |
+DERIVATIVES: |
+    conc = s[CENTRAL]/c[V]
+    d[DEPOT] = @bolus{lag:0, amt:c[AMT]} - c[KA]*s[DEPOT]
+    d[CENTRAL] = c[KA]*s[DEPOT] - c[CL]*conc
+    d[TUMOUR] = exp(m[KIN]) - m[KOUT]*conc
+PREDICTIONS: |
+    plabel[TUMOUR] = 'Tumour'
+    p[TUMOUR] = c[SIZE] + s[TUMOUR]
+    var = m[ANOISE]**2
+    c[TUMOUR] ~ norm(p[TUMOUR], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

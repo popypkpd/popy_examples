@@ -1,0 +1,53 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: emax_binary
+    title: binary_emax_PD_model
+    author: PoPy for PK/PD
+    abstract: |
+        An emax PK/PD Model, based on the amount of drug in the body.
+        The two compartment PK model with previously estimated values of K, K21 and K12 for each individual.
+        The amount in the central compartment influences the effect compartment along with EMAX (the maximum effect) and EC50 (the amount at which the effect is half the maximum)
+    keywords: ['PD', 'Pharmacodynamics', 'two compartment model', 'emax', 'EC50', 'binary response']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[K] ~ unif(0.1,0.5)
+        c[K12] ~ unif(0.03,0.09)
+        c[K21] ~ unif(0.01,0.03)
+        f[EMAX] = 80
+        f[E50] = 20
+        f[ANOISE] = 1
+FIT_EFFECTS:
+    POP: |
+        f[EMAX] ~ unif(1, 1000) 100
+        f[E50] ~ unif (0.1, 1000) 10
+        f[ANOISE] ~ unif(0.001, 100) 0.5
+MODEL_PARAMS: |
+    m[EMAX] = f[EMAX]
+    m[E50] = f[E50]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{lag:0, amt:c[AMT]} - c[K12]*s[CENTRAL] + c[K21]*s[PERI] - c[K]*s[CENTRAL]
+    d[PERI]    =                           + c[K12]*s[CENTRAL] - c[K21]*s[PERI]
+    d[RES] = m[EMAX]* s[CENTRAL]/(m[E50]+s[CENTRAL])
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[RES] = 'Response'
+    p[RES] = s[RES]
+    var = m[ANOISE]**2
+    c[RES] ~ norm(p[RES], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

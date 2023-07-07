@@ -1,0 +1,71 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: indirect_pd_pop
+    title: Indirect_PKPD_model
+    author: PoPy for PK/PD
+    abstract: |
+        A indirect (i.e. uses delay compartments) PD Model, based on the amount of drug in the body, delayed by two lag compartments
+        The amount in the central compartment is determined by K, which has been estimated for each individual.
+        The amount in the central compartment influences the rate of removal of a biomarker (KOUT).
+    keywords: ['pd', 'one compartment model', 'indirect', 'delay compartment']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[BASE] = 800
+        f[KOUT] = 0.03
+        f[PNOISE] = 0.1
+        f[ANOISE] = 0.5
+        f[BASE_isv, KOUT_isv] = [[0.05, 0.0],
+                                [0.0, 0.01]]
+    ID: |
+        c[ID] = sequential(40)
+        c[DOSE] = 100
+        # c[K] ~ unif(0.1,0.5)
+        c[CL] ~ unif(2.1,5)
+        c[V] ~ unif(10,20)
+        t[RESET] = 0.0
+        t[DOSE] = 25.0
+        t[OBS] ~ unif(1.0, 200.0; 10)
+        # t[OBS] = range(1.0, 200.0; 20)
+        # t[OBS] = range(1.0, 50.0; 5)
+        r[BASE, KOUT] ~ mnorm( [0,0], f[BASE_isv, KOUT_isv] )
+FIT_EFFECTS:
+    POP: |
+        f[BASE] ~ unif(1, 1000) 500
+        f[KOUT] ~ unif (0.001, 10) 0.1
+        f[PNOISE] ~ unif(0.001, 1) 0.05
+        f[ANOISE] ~ unif(0.001, 1) 0.2
+        f[BASE_isv, KOUT_isv] ~ spd_matrix() [[0.02],
+                                              [0.0, 0.02]]
+    ID: |
+        r[BASE, KOUT] ~ mnorm( [0,0], f[BASE_isv, KOUT_isv] )
+MODEL_PARAMS: |
+    m[BASE] = f[BASE] * exp(r[BASE])
+    m[KOUT] = f[KOUT] * exp(r[KOUT])
+    # m[KIN] = m[BASE]*m[KOUT]
+    m[PNOISE] = f[PNOISE]
+    m[ANOISE] = f[ANOISE]
+STATES: |
+    s[CENTRAL] = 0.0
+    s[MARKER] = m[BASE]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[DOSE]} - s[CENTRAL]*c[CL]/c[V]
+    d[LAG1] = m[KOUT]*s[CENTRAL]/c[V] - m[KOUT]*s[LAG1]
+    d[LAG2] = m[KOUT]*s[LAG1] - m[KOUT]*s[LAG2]
+    d[MARKER] = m[BASE]*m[KOUT] - (1+s[LAG2])*m[KOUT]*s[MARKER]
+PREDICTIONS: |
+    plabel[MARKER] = 'Biomarker conc'
+    p[MARKER] = s[MARKER]
+    var = (p[MARKER]*m[PNOISE])**2 + m[ANOISE]**2
+    c[MARKER] ~ norm(p[MARKER], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 0.001, max_nsteps: 75000}}
+# FIT_METHODS: [JOE: {max_n_main_iterations: 100, CONVERGER: {OBJ_SIM: {}}}]
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

@@ -1,0 +1,63 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: direct_pd_simul
+    title: Direct PD Model Simultaneous PK/PD Parameter fit
+    author: PoPy for PK/PD
+    abstract: |
+        A simple direct PD Model, based on the amount of drug in the body. That simultaneously fits PK and PD parameters.
+        The amount in the central compartment is determined by K, which has been previously estimated for each individual.
+        The amount in the central compartment influences the rate of removal of a biomarker (KOUT).
+    keywords: ['pd', 'one compartment model', 'direct']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        f[CL] = 2.0
+        f[V] = 50
+        f[BASE] = 800
+        f[KOUT] = 0.03
+        f[PK_ANOISE] = 0.5
+        f[PD_ANOISE] = 0.3
+FIT_EFFECTS:
+    POP: |
+        f[CL] ~ unif(0.001, 1000) 5.0
+        f[V] ~ unif (0.001, 1000) 15
+        f[BASE] ~ unif(1, 1000) 500
+        f[KOUT] ~ unif (0.001, 10) 0.1
+        f[PK_ANOISE] ~ unif(0.001, 10) 5
+        f[PD_ANOISE] ~ unif(0.001, 10) 5
+MODEL_PARAMS: |
+    m[CL] = f[CL]
+    m[V] = f[V]
+    m[BASE] = f[BASE]
+    m[KOUT] = f[KOUT]
+    m[PK_ANOISE] = f[PK_ANOISE]
+    m[PD_ANOISE] = f[PD_ANOISE]
+STATES: |
+    s[CENTRAL] = 0.0
+    s[MARKER] = m[BASE]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT]} - s[CENTRAL]*m[CL]/m[V]
+    d[MARKER] = m[BASE]*m[KOUT] - (1+s[CENTRAL]/m[V])*m[KOUT]*s[MARKER]
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[MARKER] = "Biomarker concentration (mg/L)"
+    plabel[CENTRAL] = "Drug concentration (mg/L)"
+    p[CENTRAL] = s[CENTRAL]/m[V]
+    c[CENTRAL] ~ norm(p[CENTRAL], m[PK_ANOISE]**2)
+    p[MARKER] = s[MARKER]
+    c[MARKER] ~ norm(p[MARKER], m[PD_ANOISE]**2)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 1e-03, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

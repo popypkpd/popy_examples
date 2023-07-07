@@ -1,0 +1,58 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: dp_placebo
+    title: placebo_disease_progression_model
+    author: Andrew Cristinacce @ PoPy for PK/PD
+    abstract: |
+        Specifies both the pop_gen and pop_fit subscripts.
+        A exponential disease progression model, based on the concentration of drug in the central compartment.
+        The amount in the central compartment is determined by CL/V, which has been previously estimated for each individual.
+        The disease compartment increases exponentially over time, but is initially reduced by the drug concentration.
+        A placebo effect is also included. This decreases over time and the individual placebo effects can shift in both directions.
+    keywords: ['PD', 'Pharmacodynamics', 'one compartment model', 'exponential disease progression', 'placebo']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[CL] ~ unif(1,5)
+        c[V] ~ unif(10,30)
+        c[BASE] ~ unif(300,600)
+        f[PLAC] = -20
+        f[ALPHA] = 0.05
+        f[BETA] = 0.1
+        f[ANOISE] = 2
+FIT_EFFECTS:
+    POP: |
+        f[PLAC] ~ unif (-100, 100) -1
+        f[ALPHA] ~ unif (0.001, 10) 0.1
+        f[BETA] ~ unif (0.001, 10) 0.2
+        f[ANOISE] ~ unif(0.001, 100) 1
+MODEL_PARAMS: |
+    m[PLAC] = f[PLAC]
+    m[ALPHA] = f[ALPHA]
+    m[BETA] = f[BETA]
+    m[ANOISE] = f[ANOISE]
+STATES: |
+DERIVATIVES: |
+    conc = s[CENTRAL]/c[V]
+    d[CENTRAL] = @bolus{lag:0, amt:c[AMT]} - c[CL]*conc
+    d[DIS] = m[PLAC]/(x[TIME]+0.0001) + exp(m[ALPHA]*x[TIME]) - m[BETA]*conc
+PREDICTIONS: |
+    plabel[DIS] = 'Disease'
+    p[DIS] = c[BASE] + s[DIS]
+    var =  m[ANOISE]**2
+    c[DIS] ~ norm(p[DIS], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS:
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

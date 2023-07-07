@@ -1,0 +1,35 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 123456}
+DESCRIPTION:
+    name: weibull_dosing_repeated
+    title: Repeated Weibull Dose with first order elimination.
+    author: PoPy for PK/PD
+    abstract: |
+        Repeated weibull dose into single compartment with first order elimination.
+    keywords: ['weibull', 'repeated', 'one compartment model']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 95.0
+        t[RESET] = 0.0
+        t[DOSE] = range(1, 76; 4)
+        t[OBS] = range(1, 100; 20)
+        c[CL] = 3
+        c[V] = 20
+FIT_EFFECTS:
+    POP: |
+MODEL_PARAMS: |
+DERIVATIVES: |
+    d[CENTRAL] = @weibull{amt:c[AMT], lambda: 15.0, kappa: 3.0} - c[CL]*s[CENTRAL]/c[V]
+PREDICTIONS: |
+    plabel[DRUG] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DRUG] = s[CENTRAL]/c[V]
+    c[DRUG] ~ norm(p[DRUG], 0.0)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: [ND: {}]
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 0.1, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    FIT: {output_mode: run, sim_time_step: 0.1, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

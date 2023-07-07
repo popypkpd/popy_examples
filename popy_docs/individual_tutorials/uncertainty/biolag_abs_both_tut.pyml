@@ -1,0 +1,54 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: biolag_abs_both_stderr
+    title: Bioavailability and Lag
+    author: PoPy for PK/PD
+    abstract: |
+        One compartment model with absorption compartment. Bolus dosing with bioavailability and lag parameters to estimate.
+    keywords: ['one compartment model', 'dep_one_cmp_k', 'identifiability', 'bioavailability', 'lag']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(15.0, 40.0; 50)
+        f[LAG] = 5.0
+        f[BIO] = 0.583
+        f[KA] = 0.3
+        f[KE] = 0.15
+FIT_EFFECTS:
+    POP: |
+        f[LAG] ~ unif(0, 15) 5.0
+        f[BIO] ~ unif(0.1, 1) 0.5
+        f[KA] = 0.3
+        f[KE] = 0.15
+MODEL_PARAMS: |
+    m[LAG] = f[LAG]
+    m[BIO] = f[BIO]
+    m[KA] = f[KA]
+    m[KE] = f[KE]
+DERIVATIVES: |
+    d[DEPOT] = 0.0
+    d[CENTRAL] = 0.0
+    d[DEPOT] += @bolus{amt:c[AMT]*m[BIO], lag: m[LAG]}  # dose in
+    d[DEPOT->CENTRAL] += m[KA]*s[DEPOT]  # absorption
+    d[CENTRAL] -= m[KE]*s[CENTRAL]  # elimination out
+PREDICTIONS: |
+    p[DV_CENTRAL] = s[CENTRAL]
+    prop_std = 0.0 # 0.1*p[DV_CENTRAL]
+    add_std = 1.0
+    total_var = prop_std**2 + add_std**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], total_var)
+ODE_SOLVER: {CPPLSODA: {rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+COVARIANCE: {SANDWICH: {var_covariance_flag: True, inv_hessian_flag: True}}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 0.1}
+    FIT: {output_mode: run, sim_time_step: 0.1}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

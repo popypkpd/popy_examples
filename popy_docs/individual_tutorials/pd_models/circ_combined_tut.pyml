@@ -1,0 +1,106 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: circ_combined
+    title: Combined circadian model
+    author: PoPy for PK/PD
+    abstract: |
+        A PD Model based on the concentration of drug in the plasma.
+        The PD model uses three sine functions with different amplitudes and frequencies, which simulates a circadian rhythm for the generation of a biomarker.
+        The amount in the central compartment is determined by CL, V1, Q and V2, PK parameters, which have been previously estimated for each individual in the data file.
+        The amount in the central compartment influences the rate of production of a biomarker.
+    keywords: ['PD', 'Pharmacodynamics', 'sine function', 'Circadian rhythm']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        # t[DOSE] = 1.0
+        t[DOSE] = 200.0
+        # t[OBS] ~ unif(1.0, 40.0; 100)
+        t[OBS] ~ unif(1.0, 500.0; 250)
+        # t[OBS] ~ unif(1.0, 500.0; 500)
+        # t[OBS] ~ unif(1.0, 500.0; 1000)
+        c[CL] ~ unif(0.5,2.5)
+        c[V1] ~ unif(15,25)
+        c[Q] ~ unif(0.3,1.5)
+        c[V2] ~ unif(5,15)
+        c[BASE] ~ unif(150,200)
+        f[AMP1] = 1.2
+        f[INT1] = 3.5
+        f[AMP2] = 2.5
+        f[INT2] = 6.0
+        f[AMP3] = 3.2
+        f[INT3] = 13.0
+        # f[AMP4] = 2.0
+        # f[INT4] = 25.0
+        f[KOUT] = 0.05
+        f[ANOISE] = 5.0
+FIT_EFFECTS:
+    POP: |
+        f[AMP1] ~ unif (0.1, 10) 3
+        f[INT1] ~ unif (0.1, 100) 5
+        f[AMP2] ~ unif (0.1, 10) 3
+        f[INT2] ~ unif (0.1, 100) 5
+        f[AMP3] ~ unif (0.1, 10) 3
+        f[INT3] ~ unif (0.1, 100) 5
+        # f[AMP4] ~ unif (0.1, 10) 3
+        # f[INT4] ~ unif (0.1, 100) 5
+        f[KOUT] ~ unif (0.001, 10) 0.1
+        f[ANOISE] ~ unif(0.001, 1000) 10.0
+MODEL_PARAMS: |
+    m[AMP1] = f[AMP1]
+    m[INT1] = f[INT1]
+    m[AMP2] = f[AMP2]
+    m[INT2] = f[INT2]
+    m[AMP3] = f[AMP3]
+    m[INT3] = f[INT3]
+    # m[AMP4] = f[AMP4]
+    # m[INT4] = f[INT4]
+    m[KOUT] = f[KOUT]
+    m[KIN] = c[BASE]*m[KOUT]
+    m[ANOISE] = f[ANOISE]
+STATES: |
+    # states at time zero
+    s[CENTRAL] = 0.0  # PK
+    # note the circadian means that d[MARKER] = 0 does NOT indicated steady state!?
+    # have to do run in, before applying dose.
+    # s[MARKER] = exp(m[AMP] * sin(2*pi*(m[INT])/12))/m[KOUT]
+    # very approx average value of exp(A*sin(x)) ~= ( exp(1.0*A) + exp(-1.0*A) )*0.5
+    # approx_av_exp_sin = 0.0
+    # approx_av_exp_sin += exp(m[AMP1]) + exp(-m[AMP1])
+    # approx_av_exp_sin += exp(m[AMP2]) + exp(-m[AMP2])
+    # approx_av_exp_sin += exp(m[AMP3]) + exp(-m[AMP3])
+    # approx_av_exp_sin += exp(m[AMP4]) + exp(-m[AMP4])
+    # approx_av_exp_sin *= 0.5
+    max_amp = max(m[AMP1], m[AMP2], m[AMP3]) #, m[AMP4])
+    approx_av_exp_sin = (exp(max_amp) + exp(-max_amp)) * 0.5
+    s[MARKER] = approx_av_exp_sin/m[KOUT]
+    # s[MARKER] = 0.0 # PD
+DERIVATIVES: |
+    circ = 0.0
+    circ += exp(m[AMP1] * sin(2*pi*(x[TIME]-m[INT1])/12))
+    circ += exp(m[AMP2] * sin(2*pi*(x[TIME]-m[INT2])/24))
+    circ += exp(m[AMP3] * sin(2*pi*(x[TIME]-m[INT3])/48))
+    # circ += exp(m[AMP4] * sin(2*pi*(x[TIME]-m[INT4])/48))
+    conc_central = s[CENTRAL] / c[V1]
+    conc_peri = s[PERI] / c[V2]
+    d[CENTRAL] = @inf_dur{amt:c[AMT], lag:0, dur:1} - c[CL]*conc_central + c[Q]*conc_peri - c[Q]*conc_central
+    d[PERI]    =                                                         - c[Q]*conc_peri + c[Q]*conc_central
+    d[MARKER]  =  m[KIN]*conc_central + circ - m[KOUT]*s[MARKER]
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[MARKER] = "Biomarker concentration (mg/L)"
+    p[MARKER] = s[MARKER]
+    var = m[ANOISE]**2
+    c[MARKER] ~ norm(p[MARKER], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

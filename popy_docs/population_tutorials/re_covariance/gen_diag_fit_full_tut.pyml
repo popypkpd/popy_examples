@@ -1,0 +1,74 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: gen_diag_fit_full
+    title: Diagonal matrix generation full matrix fit
+    author: PoPy for PK/PD
+    abstract: |
+        One compartment model with absorption compartment and CL/V parametrisation.
+        This script uses a diagonal covariance matrix to generate the data and a full covariance matrix to fit.
+    keywords: ['dep_one_cmp_cl', 'one compartment model', 'diagonal matrix', 'full matrix']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[KA] = 0.3
+        f[CL] = 3
+        f[V] = 20
+        f[PNOISE_STD] = 0.1
+        f[ANOISE_STD] = 0.05
+        f[CL_isv, V_isv] ~ diag_matrix() [[0.2, 0.1]]
+    ID: |
+        c[ID] = sequential(200)
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 50.0; 4)
+        r[CL_isv, V_isv] ~ mnorm( [0,0], f[CL_isv, V_isv] )
+FIT_EFFECTS:
+    POP: |
+        f[KA] = 0.3
+        f[CL] = 3
+        f[V] = 20
+        f[PNOISE_STD] = 0.1
+        f[ANOISE_STD] = 0.05
+        # new: Model that links variability of
+        # CL to that of V
+        # zero off diagonal element causes fail for SPD matrix hmmm...
+        # f[CL_isv, V_isv] ~ spd_matrix() [
+        #    [ 0.01 ],
+        #    [ 0.0, 0.01 ]
+        # ]
+        f[CL_isv, V_isv] ~ spd_matrix() [
+            [ 0.01 ],
+            [ 0.0001, 0.01 ]
+        ]
+        
+    ID: |
+        r[CL_isv, V_isv] ~ mnorm( [0,0], f[CL_isv, V_isv] )
+MODEL_PARAMS: |
+    m[KA] = f[KA]
+    m[CL] = f[CL]*exp(r[CL_isv])
+    m[V] = f[V]*exp(r[V_isv])
+    m[PNOISE_STD] = f[PNOISE_STD]
+    m[ANOISE_STD] = f[ANOISE_STD]
+DERIVATIVES: |
+    d[DEPOT] = 0
+    d[CENTRAL] = 0
+    d[DEPOT] += @bolus{amt:c[AMT]}
+    d[DEPOT->CENTRAL] += m[KA]*s[DEPOT]
+    d[CENTRAL] -= m[CL]*s[CENTRAL]/m[V]
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    var = (p[DV_CENTRAL] * m[PNOISE_STD])**2 + m[ANOISE_STD]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 0.1, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    FIT: {output_mode: run, sim_time_step: 0.1, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

@@ -1,0 +1,73 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: iv_two_cmp_cl_isv
+    title: Population Two Compartment Model and Inter-subject Variance
+    author: PoPy for PK/PD
+    abstract: |
+        Population One Compartment Model and Inter-subject Variance
+    keywords: ['two compartment model', 'iv_two_cmp_cl', 'proportional noise', 'additive noise']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[CL] = 2
+        f[V1] = 10
+        f[Q] = 1.2
+        f[V2] = 20
+        f[PNOISE] = 0.01
+        f[ANOISE] = 0.01
+        f[CL_isv, V1_isv, Q_isv, V2_isv] = [[0.1, 0.0, 0.0, 0.0],
+                                            [0.0, 0.2, 0.0, 0.0],
+                                            [0.0, 0.0, 0.1, 0.0],
+                                            [0.0, 0.0, 0.0, 0.5]]
+    ID: |
+        c[ID] = sequential(30)
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 50.0; 10)
+        # t[OBS] = range(1.0, 50.0; 20)
+        # t[OBS] = range(1.0, 50.0; 5)
+        r[CL, V1, Q, V2] ~ mnorm( [0,0,0,0], f[CL_isv, V1_isv, Q_isv, V2_isv] )
+FIT_EFFECTS:
+    POP: |
+        f[CL] ~ unif(0.01, 10) 1
+        f[V1] ~ unif (0.1, 200) 15
+        f[Q] ~ unif (0.01, 10) 1
+        f[V2] ~ unif (0.1, 200) 25
+        f[PNOISE] ~ unif(0.001, 1) 0.05
+        f[ANOISE] ~ unif(0.001, 1) 0.05
+        f[CL_isv, V1_isv, Q_isv, V2_isv] ~ spd_matrix() [[0.2],
+                                                         [0.0, 0.1],
+                                                         [0.0, 0.0, 0.05],
+                                                         [0.0, 0.0, 0.0, 0.2]]
+    ID: |
+        r[CL, V1, Q, V2] ~ mnorm( [0,0,0,0], f[CL_isv, V1_isv, Q_isv, V2_isv] )
+MODEL_PARAMS: |
+    m[CL] = f[CL] * exp(r[CL])
+    m[V1] = f[V1] * exp (r[V1])
+    m[Q] = f[Q] * exp (r[Q])
+    m[V2] = f[V2] * exp (r[V2])
+    m[PNOISE] = f[PNOISE]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    # s[CENTRAL, PERI] = @iv_two_cmp_cl{ dose: @bolus{amt:c[AMT]} }
+    d[CENTRAL] = (
+        @bolus{lag:0, amt:c[AMT]} - (m[Q]/m[V1])*s[CENTRAL] +
+        (m[Q]/(m[V2]))*s[PERI] - (m[CL]/m[V1])*s[CENTRAL]
+    )
+    d[PERI] = (m[Q]/m[V1])*s[CENTRAL] - (m[Q]/(m[V2]))*s[PERI]
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = 'Drug conc'
+    p[DV_CENTRAL] = s[CENTRAL]/m[V1]
+    var = (p[DV_CENTRAL] * m[PNOISE])**2 + m[ANOISE]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 5000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

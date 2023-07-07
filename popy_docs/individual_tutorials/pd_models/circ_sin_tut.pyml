@@ -1,0 +1,71 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: circ_sin
+    title: Sine circadian model
+    author: PoPy for PK/PD
+    abstract: |
+        A PD Model based on the amount of drug in the body.
+        The PD model uses a sine function which simulates a circadian rhythm for the generation of a biomarker.
+        The amount in the central compartment is determined by CL and V, PK patameters , which have been previosly estimated for each individual.
+        The amount in the central compartment influences the rate of production of a biomarker.
+    keywords: ['PD', 'Pharmacodynamics', 'sine function', 'Circadian rhythm']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        # t[DOSE] = 1.0
+        t[DOSE] = 200.0
+        # t[OBS] ~ unif(1.0, 40.0; 100)
+        t[OBS] ~ unif(1.0, 500.0; 250)
+        c[CL] ~ unif(0.5,2.5)
+        c[V] ~ unif(10,50)
+        c[BASE] ~ unif(150,200)
+        f[AMP] = 2
+        f[INT] = 8
+        f[KOUT] = 0.05
+        f[ANOISE] = 3
+FIT_EFFECTS:
+    POP: |
+        f[AMP] ~ unif (0.1, 10) 3
+        f[INT] ~ unif (0.1, 100) 16
+        f[KOUT] ~ unif (0.001, 10) 0.1
+        f[ANOISE] ~ unif(0.001, 10) 5
+MODEL_PARAMS: |
+    m[AMP] = f[AMP]
+    m[INT] = f[INT]
+    m[KOUT] = f[KOUT]
+    m[KIN] = c[BASE]*m[KOUT]
+    m[ANOISE] = f[ANOISE]
+STATES: |
+    # states at time zero
+    s[CENTRAL] = 0.0  # PK
+    # note the circadian means that d[MARKER] = 0 does NOT indicated steady state!?
+    # have to do run in, before applying dose.
+    # s[MARKER] = exp(m[AMP] * sin(2*pi*(m[INT])/12))/m[KOUT]
+    # very approx average value of exp(A*sin(x)) ~= ( exp(1.0*A) + exp(-1.0*A) )*0.5
+    approx_av_exp_sin = (exp(m[AMP]) + exp(-m[AMP])) * 0.5
+    s[MARKER] = approx_av_exp_sin/m[KOUT]
+    # s[MARKER] = 0.0 # PD
+DERIVATIVES: |
+    conc_central = s[CENTRAL]/c[V]
+    circ = exp(m[AMP] * sin(2*pi*(x[TIME]-m[INT])/12))
+    d[CENTRAL] = @bolus{lag:0, amt:c[AMT]} - c[CL]*conc_central  # PK
+    d[MARKER] =  m[KIN]*conc_central + circ - m[KOUT]*s[MARKER]  # PD
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[MARKER] = "Biomarker concentration (mg/L)"
+    var = m[ANOISE]**2
+    p[MARKER] = s[MARKER]
+    c[MARKER] ~ norm(p[MARKER], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

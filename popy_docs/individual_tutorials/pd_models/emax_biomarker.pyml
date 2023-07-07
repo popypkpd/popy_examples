@@ -1,0 +1,59 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: emax_biomarker
+    title: emax_marker_model
+    author: PoPy for PK/PD
+    abstract: |
+        An emax Model, based on the concentration of drug in the central compartment.
+        The amount in the central compartment is determined by CL/V, which has been estimated for each individual.
+        The concentration in the central compartment influences the rate of removal of a biomarker (KOUT).
+    keywords: ['PD', 'Pharmacodynamics', 'one compartment model', 'KIN', 'KOUT', 'emax', 'biomarker']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[CL] ~ unif(1,5)
+        c[V] ~ unif(10,30)
+        f[KIN] = 10
+        f[KOUT] = 0.05
+        f[EMAX] = 80
+        f[E50] = 30
+        f[ANOISE] = 1
+FIT_EFFECTS:
+    POP: |
+        f[KIN] ~ unif(0.01, 100) 15
+        f[KOUT] ~ unif (0.001, 10) 0.1
+        f[EMAX] ~ unif (1, 1000) 90
+        f[E50] ~ unif (1, 100) 25
+        f[ANOISE] ~ unif(0.001, 10) 5
+MODEL_PARAMS: |
+    m[KOUT] = f[KOUT]
+    m[KIN] = f[KIN]
+    m[EMAX] = f[EMAX]
+    m[E50] = f[E50]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    conc = s[CENTRAL]/c[V]
+    d[CENTRAL] = @bolus{lag:0, amt:c[AMT]} - c[CL]*conc
+    RES = m[EMAX]* conc/(m[E50] + conc)
+    d[MARKER] = m[KIN]*RES - m[KOUT]*s[MARKER]
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[MARKER] = "Biomarker concentration (mg/L)"
+    p[MARKER] = s[MARKER]
+    var = m[ANOISE]**2
+    c[MARKER] ~ norm(p[MARKER], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

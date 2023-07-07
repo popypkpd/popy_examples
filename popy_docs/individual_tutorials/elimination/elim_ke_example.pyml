@@ -1,0 +1,29 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 123456}
+DESCRIPTION:
+    name: elim_ke_example
+    title: Elimination Example with KE parameter
+    author: PoPy for PK/PD
+    abstract: |
+        Closed form solution for a one compartment model with IV dosing.
+    keywords: ['closed form solution', 'one compartment model', 'advan1']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[OBS] = range(1, 40; 20)
+        c[KE] = 0.1
+FIT_EFFECTS:
+    POP: |
+MODEL_PARAMS: |
+PREDICTIONS: |
+    plabel[DRUG_AMT] = "Drug Amount (mg)"
+    clabel[TIME] = "Time (minutes)"
+    p[DRUG_AMT] = c[AMT]*exp(-c[KE]*(c[TIME]-1.0))
+    c[DRUG_AMT] ~ norm(p[DRUG_AMT], 0.0)
+FIT_METHODS: [ND: {}]
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

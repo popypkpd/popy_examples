@@ -1,0 +1,69 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: d1cmp_cl_isv_01
+    title: One Compartment Model with Absorption and Inter-subject Variance f[CL_isv]=0.01
+    author: PoPy for PK/PD
+    abstract: |
+        Population one Compartment Model with Absorption and Inter-subject Variance
+        Here true f[CL_isv] value is set to 0.01
+    keywords: ['one compartment model', 'dep_one_cmp_cl']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[KA] = 0.3
+        f[CL] = 3
+        f[V] = 20
+        f[PNOISE_STD] = 0.1
+        f[ANOISE_STD] = 0.05
+        # new: true inter-subject variability
+        f[CL_isv] = 0.01
+    ID: |
+        # new: 30 individuals for this population
+        c[ID] = sequential(30)
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 50.0; 4)
+        # new: inter-subject variability
+        r[CL_isv] ~ norm(0, f[CL_isv])
+FIT_EFFECTS:
+    POP: |
+        f[KA] ~ unif(0.01, 1) 0.5
+        f[CL] ~ unif(0.01, 10) 1
+        f[V] ~ unif (0.01, 100) 15
+        f[PNOISE_STD] ~ unif(0.001, 1) 0.2
+        f[ANOISE_STD] ~ unif(0.001, 1) 0.2
+        # new: estimated inter-subject variability
+        f[CL_isv] ~ unif(0.001, 1) 0.01
+    ID: |
+        # new: inter-subject variability
+        r[CL_isv] ~ norm(0, f[CL_isv])
+MODEL_PARAMS: |
+    m[KA] = f[KA]
+    # new: log-normally distributed ISV
+    m[CL] = f[CL]*exp(r[CL_isv])
+    m[V] = f[V]
+    m[PNOISE_STD] = f[PNOISE_STD]
+    m[ANOISE_STD] = f[ANOISE_STD]
+DERIVATIVES: |
+    d[DEPOT] = 0
+    d[CENTRAL] = 0
+    d[DEPOT] += @bolus{amt:c[AMT]}
+    d[DEPOT->CENTRAL] += m[KA]*s[DEPOT]
+    d[CENTRAL] -= m[CL]*s[CENTRAL]/m[V]
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    var = (p[DV_CENTRAL]*m[PNOISE_STD])**2 + m[ANOISE_STD]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 5000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 0.1, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    FIT: {output_mode: create, sim_time_step: 0.1, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    COMP: {output_mode: create}
+    TUTSUM: {output_mode: run}

@@ -1,0 +1,65 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: linear_pd_pop
+    title: Linear PD model
+    author: PoPy for PK/PD
+    abstract: |
+        A simple (i.e. no PD compartments) Linear PD Model.
+        Model consists of a baseline which increases linearly with concentration.
+    keywords: ['pd', 'linear', 'one compartment model']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[BL] = 10
+        f[SLOPE] = 1.0
+        f[PNOISE] = 0.01
+        f[ANOISE] = 0.5
+        f[BL_isv, SLOPE_isv] = [[0.05, 0.0],
+                                [0.0, 0.03]]
+    ID: |
+        c[ID] = sequential(30)
+        c[DOSE] = 1000
+        c[CL] ~ unif(2.0,5.0)
+        c[V] ~ unif(10,50)
+        t[RESET] = 0.0
+        t[DOSE] = 5.0
+        t[OBS] ~ unif(1.0, 50.0; 10)
+        # t[OBS] = range(1.0, 50.0; 20)
+        # t[OBS] = range(1.0, 50.0; 5)
+        r[BL, SLOPE] ~ mnorm( [0,0], f[BL_isv, SLOPE_isv] )
+FIT_EFFECTS:
+    POP: |
+        f[BL] ~ unif(0.1, 100) 15
+        f[SLOPE] ~ unif (0.001, 10) 0.5
+        f[PNOISE] ~ unif(0.001, 1) 0.03
+        f[ANOISE] ~ unif(0.001, 1) 0.2
+        # f[BL_isv, SLOPE_isv] = [[0.05, 0.0],
+        #                        [0.0, 0.03]]
+        #[BL_isv, SLOPE_isv] ~ diag_matrix() [[0.02, 0.01]]
+        f[BL_isv, SLOPE_isv] ~ spd_matrix() [[0.1],
+                                            [0.0, 0.05]]
+    ID: |
+        r[BL, SLOPE] ~ mnorm( [0,0], f[BL_isv, SLOPE_isv] )
+MODEL_PARAMS: |
+    m[BL] = f[BL] * exp(r[BL])
+    m[SLOPE] = f[SLOPE] * exp (r[SLOPE])
+    m[PNOISE] = f[PNOISE]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[DOSE]} - s[CENTRAL]*c[CL]/c[V]
+PREDICTIONS: |
+    plabel[MARKER] = 'PD measurement'
+    p[MARKER] = m[BL] + m[SLOPE]* s[CENTRAL]/c[V]
+    var = (p[MARKER]*m[PNOISE])**2 + m[ANOISE]**2
+    c[MARKER] ~ norm(p[MARKER], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+# FIT_METHODS: [JOE: {max_n_main_iterations: 100, CONVERGER: {OBJ_SIM: {}}}]
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

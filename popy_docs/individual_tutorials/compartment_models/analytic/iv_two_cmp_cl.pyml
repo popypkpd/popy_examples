@@ -1,0 +1,45 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: iv_two_cmp_cl_anyl
+    title: Two Compartment Model with Intravenous Dosing (Closed Form)
+    author: PoPy for PK/PD
+    abstract: |
+        Two Compartment Model with Intravenous Dosing
+        Central compartment with a peripheral compartment and a depot.
+        Model uses a closed form solution.
+        Parameters are as follows:-
+        * CL Clearance from central compartment
+        * V1 Volume of central compartment
+        * Q Clearance between central and peripheral compartment
+        * V2 Volume of peripheral compartment
+    keywords: ['two compartment model', 'iv_two_cmp_cl', 'advan3', 'trans4']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[AMT] = 100.0
+        c[ID] = 1
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
+        c[CL] = 2
+        c[V1] = 20
+        c[Q] = 4  # intercompartmental clearance
+        c[V2] = 26.666  # peripheral compartment volume of distribution
+FIT_EFFECTS:
+    POP: |
+MODEL_PARAMS: |
+DERIVATIVES: |
+    s[CENTRAL,PERI] = @iv_two_cmp_cl{
+        dose: @bolus{amt:c[AMT]},
+        CL: c[CL], V1: c[V1],
+        Q: c[Q], V2: c[V2] }
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/c[V1]
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], 0.0)
+ODE_SOLVER: {ANALYTIC: {}}
+FIT_METHODS: [ND:{}]
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    TUTSUM: {output_mode: run}

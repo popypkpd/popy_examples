@@ -1,0 +1,61 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: iv_two_cmp_isv
+    title: Population Two Compartment Model and Inter-subject Variance
+    author: PoPy for PK/PD
+    abstract: |
+        Population One Compartment Model and Inter-subject Variance
+    keywords: ['two compartment model', 'iv_two_cmp_k', 'proportional noise', 'additive noise']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[K12] = 0.2
+        f[K21] = 0.15
+        f[KE] = 0.1
+        f[KE_isv, K12_isv, K21_isv] ~ diag_matrix() [0.2, 0.2, 0.2]
+        f[ANOISE_STD] = 5.0
+    ID: |
+        c[ID] = sequential(20)
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
+        r[KE, K12, K21] ~ mnorm( [0,0,0], f[KE_isv, K12_isv, K21_isv] )
+FIT_EFFECTS:
+    POP: |
+        f[K12] ~ unif (0.001,1) 0.5
+        f[K21] ~ unif (0.001,1) 0.5
+        f[KE] ~ unif(0.001, 1) 0.5
+        f[KE_isv, K12_isv, K21_isv] ~ diag_matrix() [0.01, 0.01, 0.01]
+        f[ANOISE_STD] ~ P 100.0
+    ID: |
+        r[KE, K12, K21] ~ mnorm( [0,0,0], f[KE_isv, K12_isv, K21_isv] )
+MODEL_PARAMS: |
+    m[KE] = f[KE]*exp(r[KE])
+    m[K12] = f[K12]*exp(r[K12])
+    m[K21] = f[K21]*exp(r[K21])
+    m[ANOISE_STD] = f[ANOISE_STD]
+DERIVATIVES: |
+    # initialize flows to zero
+    d[CENTRAL] = 0.0
+    d[PERI] = 0.0
+    # define flows between compartments
+    d[CENTRAL] += @bolus{amt:c[AMT]}  # dose in
+    d[CENTRAL->PERI] += m[K12]*s[CENTRAL]
+    d[PERI->CENTRAL] += m[K21]*s[PERI]
+    d[CENTRAL] -= m[KE]*s[CENTRAL]  # elimination out
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = 'Drug conc'
+    p[DV_CENTRAL] = s[CENTRAL]
+    var = m[ANOISE_STD]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

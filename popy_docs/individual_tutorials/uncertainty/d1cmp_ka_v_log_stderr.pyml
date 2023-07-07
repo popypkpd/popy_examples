@@ -1,0 +1,52 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 123456}
+DESCRIPTION:
+    name: d1cmp_ka_v_log_stderr
+    title: One Compartment Model with Absorption estimating log(KA) and log(V)
+    author: PoPy for PK/PD
+    abstract: |
+        One Compartment Model with Absorption compartment with rate (KA).
+        Elimination rate parametrised by clearance (CL)
+        and volume of distribution (V). Where V, CL and KA are parametrised using a log transform.
+        Model specification uses incremental flows.
+    keywords: ['dep_one_cmp_cl', 'one compartment model', 'log transform']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
+        f[log_KA] = -1.2
+        f[log_V] = 3.0  # = log(20)
+        f[log_CL] = 1.1
+FIT_EFFECTS:
+    POP: |
+        f[log_KA] ~ unif(-2.3, -0.91) -1.2
+        f[log_V] ~ unif(2.3, 3.4) 3.0
+        f[log_CL] = 1.175
+MODEL_PARAMS: |
+    m[KA] = exp(f[log_KA])
+    m[V] = exp(f[log_V])
+    m[CL] = exp(f[log_CL])
+DERIVATIVES: |
+    # initialize
+    d[DEPOT]   = 0.0
+    d[CENTRAL] = 0.0
+    # update
+    d[DEPOT] += @bolus{amt:c[AMT]}  # dose in
+    d[DEPOT->CENTRAL] += m[KA]*s[DEPOT]  # absorption
+    d[CENTRAL] -= m[CL]*s[CENTRAL]/m[V]  # elimination out
+PREDICTIONS: |
+    p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], 0.05)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 0.1}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

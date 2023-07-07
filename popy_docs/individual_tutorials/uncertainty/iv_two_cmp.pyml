@@ -1,0 +1,55 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: iv_two_cmp_stderr
+    title: Two Compartment Model fitting K12 and K21
+    author: PoPy for PK/PD
+    abstract: |
+        Two comparment model. Fitting K12 and K21 whilst setting KE to true value.
+    keywords: ['two compartment model', 'iv_two_cmp_k']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1, 40; 50)
+        f[K12] = 0.2
+        f[K21] = 0.15
+        f[KE] = 0.1
+FIT_EFFECTS:
+    POP: |
+        f[K12] ~ unif (0.05, 0.5) 0.15
+        f[K21] ~ unif (0.05, 0.5) 0.4
+        f[KE] = 0.1
+MODEL_PARAMS: |
+    m[K12] = f[K12]
+    m[K21] = f[K21]
+    m[KE] = f[KE]
+DERIVATIVES: |
+    # initialize flows to zero
+    d[CENTRAL] = 0.0
+    d[PERI] = 0.0
+    # define flows between compartments
+    d[CENTRAL] += @bolus{amt:c[AMT]}  # dose in
+    d[CENTRAL->PERI] += m[K12]*s[CENTRAL]
+    d[PERI->CENTRAL] += m[K21]*s[PERI]
+    d[CENTRAL] -= m[KE]*s[CENTRAL]  # elimination out
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = 'Drug conc'
+    p[DV_CENTRAL] = s[CENTRAL]
+    prop_std = 0.1*p[DV_CENTRAL]
+    add_std = 1.0
+    total_var = prop_std**2 + add_std**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], total_var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+COVARIANCE: {SANDWICH: {var_covariance_flag: True, inv_hessian_flag: True}}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

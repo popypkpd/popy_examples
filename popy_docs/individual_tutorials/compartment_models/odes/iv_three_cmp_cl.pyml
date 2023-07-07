@@ -1,0 +1,55 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: iv_three_cmp_cl
+    title: Three Compartment Model with Intravenous Dosing
+    author: PoPy for PK/PD
+    abstract: |
+        Three Compartment Model with Intravenous Dosing
+        Central compartment with 2 peripheral compartments. The dose is directly into the central compartment.
+        Parameters are:-
+        * CL = elimination clearance from central compartment
+        * V1 = Volume of central compartment
+        * Q2 = Inter-compartmental clearance between central and first peripheral
+        * V2 = Volume of first peripheral compartment
+        * Q3 = Inter-compartmental clearance between central and second peripheral
+        * V3 = Volume of second peripheral compartment
+    keywords: ['three compartment model', 'iv_three_cmp_cl', 'advan11', 'trans4']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[AMT] = 100.0
+        c[ID] = 1
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
+        c[CL] = 1.5
+        c[V1] = 15
+        c[Q2] = 3
+        c[V2] = 8.0
+        c[Q3] = 12.0
+        c[V3] = 200
+FIT_EFFECTS:
+    POP: |
+MODEL_PARAMS: |
+DERIVATIVES: |
+    # initialize
+    d[CENTRAL] = 0.0
+    d[PERI1] = 0.0
+    d[PERI2] = 0.0
+    # update
+    d[CENTRAL] += @bolus{amt:c[AMT]}  # dose in
+    d[CENTRAL->PERI1] += c[Q2]*s[CENTRAL]/c[V1]
+    d[PERI1->CENTRAL] += c[Q2]*s[PERI1]/c[V2]
+    d[CENTRAL->PERI2] += c[Q3]*s[CENTRAL]/c[V1]
+    d[PERI2->CENTRAL] += c[Q3]*s[PERI2]/c[V3]
+    d[CENTRAL] -= c[CL]*s[CENTRAL]/c[V1]  # elimination out
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/c[V1]
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], 0.0)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: [ND: {max_n_main_iterations: 30}]
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    TUTSUM: {output_mode: run}

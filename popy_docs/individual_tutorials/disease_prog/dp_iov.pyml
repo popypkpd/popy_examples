@@ -1,0 +1,99 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: dp_iov
+    title: Disease progression with inter-occasional variance
+    author: Andrew Cristinacce @ PoPy for PK/PD
+    abstract: |
+        Specifies both the pop_gen and pop_fit subscripts.
+        Drug concentration defined by one compartment model with first order absorption, using pre-defined PK parameters.
+        Individuals are split into four dose groups.
+        The concentration in the CENTRAL compartment affects the drug effect, which is an emax model.
+        The disease progression model is affected by the concentration. Higher concentrations reduce the disease status
+        Inter-occasional variance is included in the LEVEL_PARAMS section and includes 3 occasions.
+    keywords: ['one compartment model', 'iov', 'inter occasional variance', 'emax', 'absorption']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[BASE] = 400
+        f[ALPHA] = 0.025
+        f[EMAX] = 0.4
+        f[EC50] = 1.8
+        f[ANOISE] = 0.1
+        f[BASE_isv, ALPHA_isv, EC50_isv] = [[0.1, 0.0, 0.0],
+                                            [0.0, 0.05, 0.0],
+                                            [0.0, 0.0, 0.9]]
+        f[BASE_iov, ALPHA_iov] = [[0.03, 0.0],
+                                 [0.0, 0.02]]
+    ID: |
+        c[ID] = sequential(50)
+        c[KA] ~ unif(0.5,15)
+        c[CL] ~ unif(13,50)
+        c[V] ~ unif(60,180)
+        c[GRP] ~ discrete({1:0.25, 2:0.25, 3:0.25, 4:0.25})
+        r[BASE, ALPHA, EC50] ~ mnorm( [0,0,0], f[BASE_isv, ALPHA_isv, EC50_isv] )
+    VISI: |
+        c[VISI] = sequential(3)
+        # c[DOSE] = 0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 18; 6)
+        r[BASE_iov, ALPHA_iov] ~ mnorm( [0,0], f[BASE_iov, ALPHA_iov] )
+FIT_EFFECTS:
+    POP: |
+        f[BASE] ~ unif(1, 1000) 450
+        f[ALPHA] ~ unif (0.001,1) 0.02
+        f[EMAX] ~ unif (0.001,1) 0.1
+        f[EC50] ~ unif (0.001,100) 1
+        f[ANOISE] ~ unif(0.001, 1) 0.05
+        f[BASE_isv, ALPHA_isv, EC50_isv] ~ spd_matrix() [[0.2],
+                                                         [0.0, 0.1],
+                                                         [0.0, 0.0, 0.5]]
+        f[BASE_iov, ALPHA_iov] ~ spd_matrix() [[0.02],
+                                               [0.0, 0.01]]
+    ID: |
+        r[BASE, ALPHA, EC50] ~ mnorm( [0,0,0], f[BASE_isv, ALPHA_isv, EC50_isv] )
+    VISI: |
+        r[BASE_iov, ALPHA_iov] ~ mnorm( [0,0], f[BASE_iov, ALPHA_iov] )
+MODEL_PARAMS: |
+    m[BASE] = f[BASE] * exp(r[BASE] + r[BASE_iov])
+    m[ALPHA] = f[ALPHA] * exp(r[ALPHA] + r[ALPHA_iov])
+    m[EMAX] = f[EMAX]
+    m[EC50] = f[EC50] * exp(r[EC50])
+    if c[GRP] == 1:
+        m[DOSE] = 0
+    elif c[VISI] == 1:
+        m[DOSE] = 200
+    elif c[GRP] == 2:
+        m[DOSE] = 200
+    elif c[GRP] == 3:
+        m[DOSE] = 400
+    else:
+        m[DOSE] = 600
+    if c[VISI] == 1:
+        m[TTIME] = c[TIME]
+    elif c[VISI] == 2:
+        m[TTIME] = c[TIME] +  168*3 # 3 weeks
+    else:
+        m[TTIME] = c[TIME] + 168*6 # 6 weeks
+    m[ANOISE] = f[ANOISE]
+STATES: |
+DERIVATIVES: |
+    d[DEPOT] = @bolus{amt:m[DOSE], lag:0} - c[KA]*s[DEPOT]
+    d[CENTRAL] = c[KA]*s[DEPOT] - c[CL]/c[V]*s[CENTRAL]
+PREDICTIONS: |
+    plabel[DIS] = 'Disease'
+    conc = s[CENTRAL]/c[V]
+    eff = m[EMAX]*conc/(m[EC50]+conc)
+    DS = m[BASE]*(1+m[ALPHA]*(m[TTIME]/24/7))*(1-eff)
+    p[DIS] = log(DS)
+    c[DIS] ~ norm(p[DIS], m[ANOISE]**2)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

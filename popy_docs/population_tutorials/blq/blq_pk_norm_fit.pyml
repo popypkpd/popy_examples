@@ -1,0 +1,58 @@
+METHOD_OPTIONS: {py_module: fit, rand_seed: 12345}
+PARALLEL: {MPI_WORKERS: {n_workers: 4}}
+DESCRIPTION:
+    name: blq_pk_norm_fit
+    title: Depot One Comp PK with BLQ observations set to LLQ
+    author: PoPy for PK/PD
+    abstract: |
+        Depot One Comp PK model, with BLQ (below level of quantification) 
+        observations set to LLQ (lower limit of quantification).
+    keywords: ['tutorial', 'pk', 'advan4', 'dep_two_cmp', 'blq']
+FILE_PATHS: 
+    input_data_file: blq_pk_tut.pyml_output\blq_pk_gen.pyml_output\synthetic_data.csv
+    output_file_ext: ['svg','pdf']
+EFFECTS:
+    POP: |
+        f[KA] ~ P1.0
+        f[CL] ~ P1.0
+        f[V1] ~ P20
+        # f[Q] ~ P1.5
+        # f[V2] ~ P100
+        # f[V2] = 80
+        f[KA_isv,CL_isv,V1_isv] ~ spd_matrix() [
+            [0.05],
+            [0.01, 0.05],
+            [0.01, 0.01, 0.05],
+        ]
+        f[PNOISE] ~ P0.1
+        f[ANOISE] = 0.01
+        # f[ANOISE] ~ P0.01
+    ID: |
+        r[KA, CL, V1] ~ mnorm([0,0,0], f[KA_isv,CL_isv,V1_isv])
+MODEL_PARAMS: |
+    m[KA] = f[KA] * exp(r[KA])
+    m[CL] = f[CL] * exp(r[CL])
+    m[V1] = f[V1] * exp(r[V1])
+    # m[Q] = f[Q] * exp(r[Q])
+    # m[V2] = f[V2] * exp(r[V2])
+    # m[ANOISE] = 0.001
+    m[ANOISE] = f[ANOISE]
+    m[PNOISE] = f[PNOISE]
+DERIVATIVES: |
+    # s[DEPOT,CENTRAL,PERI] = @dep_two_cmp_cl{dose:@bolus{amt:c[AMT]}}
+    d[DEPOT] = @bolus{amt:c[AMT]} - m[KA]*s[DEPOT]
+    d[CENTRAL] = m[KA]*s[DEPOT] - s[CENTRAL]*m[CL]/m[V1]
+PREDICTIONS: |
+    p[DV_CENTRAL] = s[CENTRAL]/m[V1]
+    var = m[ANOISE]**2 + m[PNOISE]**2 * p[DV_CENTRAL]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+    # c[DV_CENTRAL] ~ rectnorm(p[DV_CENTRAL], var, LLQ=0.5)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 1e-06}}
+FIT_METHODS:
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    SIM: {output_mode: run, sim_time_step: 1.0}
+    MSIM: {output_mode: create}
+    FITSUM: {output_mode: run}

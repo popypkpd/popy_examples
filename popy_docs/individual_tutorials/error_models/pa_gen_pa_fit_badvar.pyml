@@ -1,0 +1,42 @@
+METHOD_OPTIONS: {py_module: fit, rand_seed: 314159}
+DESCRIPTION:
+    name: pa_gen_pa_fit_badvar
+    title: Mixed error model fitted to mixed error data, but with incorrect variance definition
+    author: PoPy for PK/PD
+    abstract: |
+        One compartment model with a depot leading to a central compartment
+        This model contains both proportional and additive error, but erroneously sums the standard deviations.
+    keywords: ['one compartment model', 'dep_one_cmp_cl', 'proportional and additive error']
+FILE_PATHS:
+    input_data_file: pa_tut.pyml_output\pa_gen_pa_fit_gen.pyml_output\synthetic_data.csv
+    output_file_ext: ['svg', 'pdf']
+EFFECTS:
+    POP: |
+        f[PNOISE_STD] ~ unif(0.001, 1) 0.5
+        f[ANOISE_STD] ~ unif(0.001, 0.5) 0.25
+MODEL_PARAMS: |
+    m[KA] = 0.3
+    m[CL] = 3
+    m[V] = 20
+    m[PNOISE_STD] = f[PNOISE_STD]
+    m[ANOISE_STD] = f[ANOISE_STD]
+DERIVATIVES: |
+    s[DEPOT,CENTRAL] = @dep_one_cmp_cl{ dose: @bolus{amt:c[AMT]} }
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    prop_std = p[DV_CENTRAL] * m[PNOISE_STD]
+    add_std = m[ANOISE_STD]
+    total_var = (prop_std + add_std)**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], total_var)
+ODE_SOLVER: {ANALYTIC: {}}
+FIT_METHODS:
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GRPH: {output_mode: run}
+    SIM: {output_mode: run, sim_time_step: 1.0}
+    MSIM: {output_mode: create}
+    FITSUM: {output_mode: run}

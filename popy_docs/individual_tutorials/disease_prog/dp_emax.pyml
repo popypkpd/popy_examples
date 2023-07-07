@@ -1,0 +1,64 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: dp_emax
+    title: emax_disease_progression_compartmental_model
+    author: Andrew Cristinacce @ PoPy for PK/PD
+    abstract: |
+        Specifies both the pop_gen and pop_fit subscripts.
+        A disease progression model, based on the concentration of drug in the central compartment.
+        The amount in the central compartment is determined by CL/V, which has been previously estimated for each individual.
+        The disease compartment increases linearly over time, but is initially reduced by the drug concentration.
+        The effect of the drug concentration is limited by an emax model
+    keywords: ['PD', 'Pharmacodynamics', 'one compartment model', 'linear disease progression', 'emax', 'E50']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[CL] ~ unif(1,5)
+        c[V] ~ unif(10,30)
+        f[S0] = 200
+        f[EMAX] = 30
+        f[E50] = 10
+        f[ALPHA] = 2.5
+        f[BETA] = 0.3
+        f[ANOISE] = 1
+FIT_EFFECTS:
+    POP: |
+        f[S0] ~ unif (0.1, 1000) 250
+        f[EMAX] ~ unif (0.1, 1000) 20
+        f[E50] ~ unif (0.1, 1000) 15
+        f[ALPHA] ~ unif (0.001, 10) 2
+        f[BETA] ~ unif (0.001, 10) 0.1
+        f[ANOISE] ~ unif(0.001, 100) 2
+MODEL_PARAMS: |
+    m[S0] = f[S0]
+    m[EMAX] = f[EMAX]
+    m[E50] = f[E50]
+    m[ALPHA] = f[ALPHA]
+    m[BETA] = f[BETA]
+    m[ANOISE] = f[ANOISE]
+STATES: |
+DERIVATIVES: |
+    conc = s[CENTRAL]/c[V]
+    d[CENTRAL] = @bolus{lag:0, amt:c[AMT]} - c[CL]*conc
+    RES = m[EMAX]*conc/(m[E50]+ conc)
+    d[DIS] = m[ALPHA] - m[BETA]*RES
+PREDICTIONS: |
+    plabel[DIS] = 'Disease'
+    p[DIS] = m[S0] + s[DIS]
+    var = m[ANOISE]**2
+    c[DIS] ~ norm(p[DIS], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

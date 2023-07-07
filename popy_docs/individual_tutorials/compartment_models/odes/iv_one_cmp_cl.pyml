@@ -1,0 +1,35 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 123456}
+DESCRIPTION:
+    name: iv_one_cmp_cl
+    title: One Compartment Model with Intravenous Dosing
+    author: PoPy for PK/PD
+    abstract: |
+        One Compartment Model with Intravenous Dosing
+        Elimination rate parametrised by clearance (CL)
+        and volume of distribution (V).
+    keywords: ['one compartment model', 'iv_one_cmp_cl', 'advan1', 'trans2']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
+        c[CL] = 3
+        c[V] = 20
+FIT_EFFECTS:
+    POP: |
+MODEL_PARAMS: |
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT]} - c[CL]*s[CENTRAL]/c[V]
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/c[V]
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], 0.0)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: [ND: {max_n_main_iterations: 30}]
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    TUTSUM: {output_mode: run}

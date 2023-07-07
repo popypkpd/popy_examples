@@ -1,0 +1,51 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: dep_two_cmp_cl
+    title: Two Compartment Model with Absorption
+    author: PoPy for PK/PD
+    abstract: |
+        Two Compartment Model with Absorption
+        Central compartment with a peripheral compartment.
+        Parameters are as follows:-
+        * CL Clearance from central compartment
+        * V1 Volume of central compartment
+        * Q Clearance between central and peripheral compartment
+        * V2 Volume of peripheral compartment
+    keywords: ['two compartment model', 'dep_two_cmp_cl', 'advan4', 'trans4']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[AMT] = 100.0
+        c[ID] = 1
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
+        c[KA] = 0.3  # absorption rate constant
+        c[CL] = 2
+        c[V] = 20
+        c[Q] = 4
+        c[V2] = 26.666
+FIT_EFFECTS:
+    POP: |
+MODEL_PARAMS: |
+DERIVATIVES: |
+    # initialize
+    d[DEPOT]   = 0.0
+    d[CENTRAL] = 0.0
+    d[PERI] = 0.0
+    # add flows
+    d[DEPOT] += @bolus{amt:c[AMT]}
+    d[DEPOT->CENTRAL] += c[KA]*s[DEPOT]  # absorption
+    d[CENTRAL->PERI] += c[Q]*s[CENTRAL]/c[V]
+    d[PERI->CENTRAL] += c[Q]*s[PERI]/c[V2]
+    d[CENTRAL] -= c[CL]*s[CENTRAL]/c[V]
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/c[V]
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], 0.0)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 5000}}
+FIT_METHODS: [ND: {max_n_main_iterations: 30}]
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 0.1, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    TUTSUM: {output_mode: run}

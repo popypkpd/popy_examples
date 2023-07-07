@@ -1,0 +1,53 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 123456}
+DESCRIPTION:
+    name: d1cmp_ka_cl_stderr
+    title: One Compartment Model with Absorption estimating KA and CL
+    author: PoPy for PK/PD
+    abstract: |
+        One Compartment Model with Absorption compartment with rate (KA).
+        Elimination rate parametrised by clearance (CL)
+        and volume of distribution (V).
+        Model specification uses incremental flows
+    keywords: ['dep_one_cmp_cl', 'one compartment model']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
+        f[KA] = 0.3
+        f[V] = 20
+        f[CL] = 3
+FIT_EFFECTS:
+    POP: |
+        f[KA] ~ unif(0.1, 0.4) 0.3
+        f[V] = 18.003
+        f[CL] ~ unif(2.0, 5.0) 3
+MODEL_PARAMS: |
+    m[KA] = f[KA]
+    m[V] = f[V]
+    m[CL] = f[CL]
+DERIVATIVES: |
+    # initialize
+    d[DEPOT]   = 0.0
+    d[CENTRAL] = 0.0
+    # update
+    d[DEPOT] += @bolus{amt:c[AMT]}  # dose in
+    d[DEPOT->CENTRAL] += m[KA]*s[DEPOT]  # absorption
+    d[CENTRAL] -= m[CL]*s[CENTRAL]/m[V]  # elimination out
+PREDICTIONS: |
+    p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], 0.05)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+COVARIANCE: {SANDWICH: {var_covariance_flag: True, inv_hessian_flag: True}}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 0.1}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

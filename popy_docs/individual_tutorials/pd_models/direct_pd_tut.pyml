@@ -1,0 +1,55 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: direct_pd
+    title: Direct PD Model
+    author: PoPy for PK/PD
+    abstract: |
+        A simple direct PD Model, based on the amount of drug in the body.
+        The amount in the central compartment is determined by K, which has been previously estimated for each individual.
+        The amount in the central compartment influences the rate of removal of a biomarker (KOUT).
+    keywords: ['pd', 'one compartment model', 'direct']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[CL] ~ unif(2.1,5)
+        c[V] ~ unif(10,20)
+        f[BASE] = 800
+        f[KOUT] = 0.03
+        f[ANOISE] = 0.5
+FIT_EFFECTS:
+    POP: |
+        f[BASE] ~ unif(1, 1000) 500
+        f[KOUT] ~ unif (0.001, 10) 0.1
+        f[ANOISE] ~ unif(0.001, 10) 5
+MODEL_PARAMS: |
+    m[BASE] = f[BASE]
+    m[KOUT] = f[KOUT]
+    m[ANOISE] = f[ANOISE]
+STATES: |
+    s[CENTRAL] = 0.0
+    s[MARKER] = m[BASE]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT]} - s[CENTRAL]*c[CL]/c[V]
+    d[MARKER] = m[BASE]*m[KOUT] - (1+s[CENTRAL]/c[V])*m[KOUT]*s[MARKER]
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[MARKER] = "Biomarker concentration (mg/L)"
+    p[MARKER] = s[MARKER]
+    var = m[ANOISE]**2
+    c[MARKER] ~ norm(p[MARKER], var)
+ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 0.001, max_nsteps: 75000}}
+# FIT_METHODS: [JOE: {max_n_main_iterations: 100, CONVERGER: {OBJ_SIM: {}}}]
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

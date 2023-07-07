@@ -1,0 +1,56 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: emax_nondiff
+    title: Direct Effect Emax PD Model
+    author: PoPy for PK/PD
+    abstract: |
+        A direct effect emax PK/PD Model, based on the concentration of drug in the body.
+        The one compartment PK model uses previously estimated values of CL and V for each individual
+        The concentration in the central compartment influences the effect.
+        The effect is not a compartment and so does not increase over time. It is dependent on the baseline effect, the concentration in the central compartment, the maximum effect (emax) and concentration at which the effect is half the maximum (EC50).
+    keywords: ['PD', 'Pharmacodynamics', 'one compartment model', 'emax', 'EC50', 'baseline effect']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[CL] ~ unif(1,3)
+        c[V] ~ unif(15,25)
+        f[EMAX] = 100
+        f[E50] = 60
+        f[EBASE] = 10
+        f[ANOISE] = 0.5
+FIT_EFFECTS:
+    POP: |
+        f[EMAX] ~ unif(1, 1000) 80
+        f[E50] ~ unif (0.1, 1000) 50
+        f[EBASE] ~ unif (0.1, 1000) 5
+        f[ANOISE] ~ unif(0.1, 100) 2
+MODEL_PARAMS: |
+    m[EMAX] = f[EMAX]
+    m[E50] = f[E50]
+    m[EBASE] = f[EBASE]
+    m[K] = c[CL]/c[V]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT], lag:0} - m[K]*s[CENTRAL]
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[RES] = 'Response'
+    conc = s[CENTRAL]/c[V]
+    p[RES] = m[EBASE] + (m[EMAX]*conc)/(m[E50]+conc)
+    var =  m[ANOISE]**2
+    c[RES] ~ norm(p[RES], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

@@ -1,0 +1,78 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: iv_two_cmp_vss_isv
+    title: Population Two Compartment Model using VSS transform and Inter-subject Variance
+    author: PoPy for PK/PD
+    abstract: |
+        Population One Compartment Model and Inter-subject Variance
+    keywords: ['two compartment model', 'iv_two_cmp_vss', 'proportional noise', 'additive noise', 'vss_transform']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[CL] = 2
+        f[V] = 10
+        f[Q] = 1.2
+        f[VSS] = 50
+        f[PNOISE] = 0.01
+        f[ANOISE] = 0.01
+        c[AMT] = 100.0
+        f[CL_isv, V_isv, Q_isv, VSS_isv] = [[0.1, 0.0, 0.0, 0.0],
+                                            [0.0, 0.2, 0.0, 0.0],
+                                            [0.0, 0.0, 0.1, 0.0],
+                                            [0.0, 0.0, 0.0, 0.5]]
+    ID: |
+        c[ID] = sequential(30)
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 50.0; 10)
+        # t[OBS] ~ unif(1.0, 50.0; 5)
+        # t[OBS] ~ unif(1.0, 50.0; 20)
+        # t[OBS] = range(1.0, 50.0; 20)
+        # t[OBS] = range(1.0, 50.0; 5)
+        r[CL, V, Q, VSS] ~ mnorm( [0,0,0,0], f[CL_isv, V_isv, Q_isv, VSS_isv] )
+FIT_EFFECTS:
+    POP: |
+        f[CL] ~ unif(0.01, 10) 1
+        f[V] ~ unif (0.1, 200) 15
+        f[Q] ~ unif (0.01, 10) 1
+        f[VSS] ~ unif (0.1, 200) 25
+        f[PNOISE] ~ unif(0.001, 1) 0.05
+        f[ANOISE] ~ unif(0.001, 1) 0.05
+        f[CL_isv, V_isv, Q_isv, VSS_isv] ~ spd_matrix() [[0.2],
+                                                         [0.0, 0.1],
+                                                         [0.0, 0.0, 0.05],
+                                                         [0.0, 0.0, 0.0, 0.2]]
+    ID: |
+        r[CL, V, Q, VSS] ~ mnorm( [0,0,0,0], f[CL_isv, V_isv, Q_isv, VSS_isv] )
+MODEL_PARAMS: |
+    m[CL] = f[CL] * exp(r[CL])
+    m[V] = f[V] * exp (r[V])
+    m[Q] = f[Q] * exp (r[Q])
+    m[VSS] = f[VSS] * exp (r[VSS])
+    # make sure m[VSS] is greater then m[V]
+    if m[VSS] <= m[V]:
+        m[VSS] = m[V] + 0.1
+    m[PNOISE] = f[PNOISE]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    # s[CENTRAL, PERI] = @iv_two_cmp_vss{ dose: @bolus{amt:c[AMT]} }
+    d[CENTRAL] = (
+        @bolus{lag:0, amt:c[AMT]} - (m[Q]/m[V])*s[CENTRAL] +
+        (m[Q]/(m[VSS]-m[V]))*s[PERI] - (m[CL]/m[V])*s[CENTRAL]
+    )
+    d[PERI] = (m[Q]/m[V])*s[CENTRAL] - (m[Q]/(m[VSS]-m[V]))*s[PERI]
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = 'Drug conc'
+    p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    var = (p[DV_CENTRAL] * m[PNOISE])**2 + m[ANOISE]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

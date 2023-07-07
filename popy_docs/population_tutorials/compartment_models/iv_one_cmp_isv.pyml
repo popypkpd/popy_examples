@@ -1,0 +1,49 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 123456}
+DESCRIPTION:
+    name: iv_one_cmp_isv
+    title: Population One Compartment Model and Inter-subject Variance
+    author: PoPy for PK/PD
+    abstract: |
+        Population One Compartment Model and Inter-subject Variance
+    keywords: ['one compartment model', 'iv_one_cmp_k', 'additive noise']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        f[KE] = 0.1
+        f[KE_isv] = 0.2
+        f[ANOISE_STD] = 5.0
+    ID: |
+        c[ID] = sequential(20)
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 20)
+        r[KE_isv] ~ norm(0, f[KE_isv])
+FIT_EFFECTS:
+    POP: |
+        f[KE] ~ P 0.5
+        f[KE_isv] ~ P 0.01
+        f[ANOISE_STD] ~ P 100.0
+    ID: |
+        r[KE_isv] ~ norm(0, f[KE_isv])
+MODEL_PARAMS: |
+    m[KE] = f[KE] * exp(r[KE_isv])
+    m[ANOISE_STD] = f[ANOISE_STD]
+STATES: |
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT]} - m[KE]*s[CENTRAL]
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = 'Drug conc'
+    p[DV_CENTRAL] = s[CENTRAL]
+    var = m[ANOISE_STD]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

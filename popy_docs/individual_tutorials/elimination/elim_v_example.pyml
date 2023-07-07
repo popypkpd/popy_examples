@@ -1,0 +1,31 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 123456}
+DESCRIPTION:
+    name: elim_v_example
+    title: Elimination Example with Volume of Distribution
+    author: PoPy for PK/PD
+    abstract: |
+        Closed form solution for a one compartment model with IV dosing.
+    keywords: ['closed form solution', 'one compartment model', 'advan1']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[OBS] = range(1, 40; 20)
+        c[KE] = 0.1
+        c[V] = 20
+FIT_EFFECTS:
+    POP: |
+MODEL_PARAMS: |
+PREDICTIONS: |
+    plabel[DRUG_CONC] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    AMOUNT = c[AMT]*exp(-c[KE]*(c[TIME]-1.0))
+    p[DRUG_CONC] = AMOUNT/c[V]
+    c[DRUG_CONC] ~ norm(p[DRUG_CONC], 0.0)
+FIT_METHODS: [ND: {}]
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

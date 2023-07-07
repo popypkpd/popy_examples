@@ -1,0 +1,49 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: linear_pd
+    title: Linear PD model
+    author: PoPy for PK/PD
+    abstract: |
+        A simple Linear PD Model.
+        Model consists of a baseline which increases linearly with concentration.
+    keywords: ['pd', 'linear', 'one compartment model']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        c[CL] ~ unif(2.0,5.0)
+        c[V] ~ unif(10,50)
+        f[BL] = 10
+        f[SLOPE] = 1.0
+        f[ANOISE] = 0.5
+FIT_EFFECTS:
+    POP: |
+        f[BL] ~ unif(0.1, 100) 15
+        f[SLOPE] ~ unif (0.001, 10) 0.5
+        f[ANOISE] ~ unif(0.001, 10) 5
+MODEL_PARAMS: |
+    m[BL] = f[BL]
+    m[SLOPE] = f[SLOPE]
+    m[ANOISE] = f[ANOISE]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT]} - c[CL]*s[CENTRAL]/c[V]
+PREDICTIONS: |
+    clabel[TIME] = "Time (minutes)"
+    plabel[MARKER] = "Biomarker concentration (mg/L)"
+    p[MARKER] = m[BL] + m[SLOPE]*s[CENTRAL]/c[V]
+    var = m[ANOISE]**2
+    c[MARKER] ~ norm(p[MARKER], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 1e-06, max_nsteps: 750}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

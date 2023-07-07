@@ -1,0 +1,44 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: exp_error
+    title: Model containing exponential error
+    author: PoPy for PK/PD
+    abstract: |
+        One compartment model with a depot leading to a central compartment.
+        This model contains exponential error.
+    keywords: ['one compartment model', 'exponential error']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+DATA_FIELDS: {time_field: Time (minutes)}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        f[EXP_NOISE] = 0.1
+FIT_EFFECTS:
+    POP: |
+        f[EXP_NOISE] ~ unif(0.001, 1) 0.2
+MODEL_PARAMS: |
+    m[KE] = 0.15
+    m[KA] = 0.3
+    m[EXP_NOISE] = f[EXP_NOISE]
+DERIVATIVES: |
+    d[DEPOT]   = @bolus{amt:c[AMT]} - m[KA]*s[DEPOT]
+    d[CENTRAL] =                      m[KA]*s[DEPOT] - m[KE]*s[CENTRAL]
+PREDICTIONS: |
+    p[CONC_CENTRAL] = s[CENTRAL]
+    exp_std = p[CONC_CENTRAL]*(exp(m[EXP_NOISE]) - 1)
+    total_var = exp_std**2
+    c[CONC_CENTRAL] ~ norm(p[CONC_CENTRAL], total_var)
+ODE_SOLVER: {CPPLSODA: {rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    FIT: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

@@ -1,0 +1,49 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: pa_gen_pa_fit
+    title: Model containing both proportional and additive error
+    author: PoPy for PK/PD
+    abstract: |
+        One compartment model with a depot leading to a central compartment.
+        This model contains both proportional and additive error.
+    keywords: ['one compartment model', 'one_two_cmp_cl', 'proportional and additive error']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(1.0, 40.0; 100)
+        f[PNOISE_STD] = 0.1
+        f[ANOISE_STD] = 0.05
+FIT_EFFECTS:
+    POP: |
+        f[PNOISE_STD] ~ unif(0.001, 1) 0.5
+        f[ANOISE_STD] ~ unif(0.001, 0.5) 0.25
+MODEL_PARAMS: |
+    m[KA] = 0.3
+    m[CL] = 3
+    m[V] = 20
+    m[PNOISE_STD] = f[PNOISE_STD]
+    m[ANOISE_STD] = f[ANOISE_STD]
+DERIVATIVES: |
+    s[DEPOT,CENTRAL] = @dep_one_cmp_cl{ dose: @bolus{amt:c[AMT]} }
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    prop_std = p[DV_CENTRAL] * m[PNOISE_STD]
+    add_std = m[ANOISE_STD]
+    total_var = prop_std**2 + add_std**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], total_var)
+ODE_SOLVER: {ANALYTIC: {}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    FIT: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}

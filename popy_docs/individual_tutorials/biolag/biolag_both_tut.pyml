@@ -1,0 +1,53 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 314159}
+DESCRIPTION:
+    name: biolag_both
+    title: Bioavailability and Lag
+    author: PoPy for PK/PD
+    abstract: |
+        One compartment model with bioavailability and lag parameters.
+    keywords: ['identifiability', 'bioavailability', 'lag', 'iv_one_cmp_cl']
+FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
+GEN_EFFECTS:
+    POP: |
+        c[ID] = 1
+        c[AMT] = 100.0
+        t[RESET] = 0.0
+        t[DOSE] = 1.0
+        t[OBS] ~ unif(5.0, 40.0; 100)
+        f[CL] = 3
+        f[V] = 20
+        f[ANOISE_STD] = 1.0
+        f[BIO] = 0.6376
+        f[LAG] = 3.0
+FIT_EFFECTS:
+    POP: |
+        f[CL] ~ unif(0.01, 10) 1
+        f[V] ~ unif (0.01, 100) 15
+        f[ANOISE_STD] ~ unif(0.001, 10) 5.0
+        f[BIO] ~ unif(0, 1) 0.8
+        f[LAG] ~ P 1.0
+MODEL_PARAMS: |
+    m[CL] = f[CL]
+    m[V] = f[V]
+    m[ANOISE_STD] = f[ANOISE_STD]
+    m[BIO] = f[BIO]
+    m[LAG] = f[LAG]
+DERIVATIVES: |
+    d[CENTRAL] = @bolus{amt:c[AMT]*m[BIO], lag: m[LAG]}  # dose in
+    d[CENTRAL] -= m[CL]/m[V]*s[CENTRAL]  # elimination out
+PREDICTIONS: |
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
+    p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    var = m[ANOISE_STD]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER: {CPPLSODA: {rtol: 0.001, max_nsteps: 75000}}
+FIT_METHODS: 
+    - ND: {max_n_main_iterations: 30}
+    # - JOE: {max_n_main_iterations: 30}
+    # - FOCE: {max_n_main_iterations: 30}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 0.1}
+    FIT: {output_mode: run, sim_time_step: 0.1}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}
