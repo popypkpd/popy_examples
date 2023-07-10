@@ -8,4 +8,7 @@ Examples using the fit ("fit" or "mfit") structure require a separate data file.
 
 Data files are given in a format readable by both PoPy and, where appropriate, Nonmem or other NLME packages.
 
-[Examples By Keyword](./_examples_by_keyword.md)
+
+## Index
+
+* [Examples By Keyword](./_examples_by_keyword.md)
