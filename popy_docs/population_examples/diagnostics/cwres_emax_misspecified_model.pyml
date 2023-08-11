@@ -27,7 +27,7 @@ FIT_EFFECTS:
         
         f[EMAX] ~ P 100
         f[C50] ~ P 20
-        f[Hill] ~ P 4.5  # Correct Hill coefficient
+        f[Hill] = 1.0  # Incorrect Hill coefficient
        
     ID: |
         
@@ -46,13 +46,10 @@ MODEL_PARAMS: |
     m[C50] *= exp(r[C50_isv])
 
     m[ANOISE_var] = 250
-    
+
 PREDICTIONS: |
 
     p[Drug] = c[TIME]
-    drug_var = m[ANOISE_var]
-    c[Drug] ~ norm(p[Drug], drug_var)
-
     p[Effect] = m[EMAX] * p[Drug]**m[Hill]/(p[Drug]**m[Hill] + m[C50]**m[Hill])
     effect_var = m[ANOISE_var]
     c[Effect] ~ norm(p[Effect], effect_var)
@@ -63,6 +60,7 @@ POSTPROCESS: |
     c[MDV] = 0  # not missing
     c[DV] = c[Effect]
     c[Drug_FLAG] = 0
+
 
 ODE_SOLVER:
     NO_SOLVER: {}
@@ -83,5 +81,5 @@ OUTPUT_SCRIPTS:
             - '{WRES}_vs_PRED'
             - '{CWRES}_vs_IPRED'
             
-    COMP: {output_mode: create}
-    TUTSUM: {output_mode: create}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}
