@@ -1,0 +1,87 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 12345}
+
+FILE_PATHS:
+    # Output file extension - determines graphical output file format.
+    output_file_ext: ['svg', "png"]
+
+GEN_EFFECTS:
+    POP: |
+        
+        f[EMAX] = 100
+        f[C50] = 20
+        f[Hill] = 4.5
+        
+    ID: |
+    
+        c[ID] = sequential(200)
+        
+        t[OBS] = [ 0.001, 1.0, 2.0, 4.0, 8.0, 16.0, 32.0, 64, 96, 120, 150, 180, 240, 320, 420, 525 ]
+
+        f[EMAX_isv] = 0.5
+        r[EMAX_isv] ~ norm(0, f[EMAX_isv])
+        f[C50_isv] = 0.5
+        r[C50_isv] ~ norm(0, f[C50_isv])
+
+FIT_EFFECTS:
+    POP: |
+        
+        f[EMAX] ~ P 100
+        f[C50] ~ P 20
+        f[Hill] ~ P 4.5  # Correct Hill coefficient
+       
+    ID: |
+        
+        f[EMAX_isv] ~ P 0.5
+        r[EMAX_isv] ~ norm(0, f[EMAX_isv])
+        f[C50_isv] ~ P 0.5
+        r[C50_isv] ~ norm(0, f[C50_isv])
+        
+MODEL_PARAMS: |
+
+    m[EMAX] = f[EMAX]
+    m[C50] = f[C50]
+    m[Hill] = f[Hill]
+
+    m[EMAX] *= exp(r[EMAX_isv])
+    m[C50] *= exp(r[C50_isv])
+
+    m[ANOISE_var] = 250
+    
+PREDICTIONS: |
+
+    p[Drug] = c[TIME]
+    drug_var = m[ANOISE_var]
+    c[Drug] ~ norm(p[Drug], drug_var)
+
+    p[Effect] = m[EMAX] * p[Drug]**m[Hill]/(p[Drug]**m[Hill] + m[C50]**m[Hill])
+    effect_var = m[ANOISE_var]
+    c[Effect] ~ norm(p[Effect], effect_var)
+
+POSTPROCESS: |
+
+    c[EVID] = 0  # observation
+    c[MDV] = 0  # not missing
+    c[DV] = c[Effect]
+    c[Drug_FLAG] = 0
+
+ODE_SOLVER:
+    NO_SOLVER: {}
+        
+FIT_METHODS: 
+    - JOE: 
+        max_n_main_iterations: 0
+        use_chain: True
+
+OUTPUT_SCRIPTS:
+    GEN: 
+        output_mode: run
+        grph_list: []
+    FIT: 
+        output_mode: run
+        grph_list: 
+            - '{OBS}_vs_TIME'
+            - '{WRES}_vs_PRED'
+            - '{CWRES}_vs_IPRED'
+            
+    COMP: {output_mode: create}
+    TUTSUM: {output_mode: create}
