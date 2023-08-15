@@ -40,6 +40,7 @@ PREDICTIONS: |
     p[CEN] = s[CENTRAL]
     var = (p[CEN]*m[PNOISE])**2 + m[ANOISE]**2
     c[DV_CENTRAL] ~ norm(p[CEN], var)
+    clabel[DV_CENTRAL] = "Drug conc. (mg/L)"
 ODE_SOLVER: {CPPLSODA: {atol: 1e-06, rtol: 1e-06, max_nsteps: 750}}
 FIT_METHODS: 
     - ND: {max_n_main_iterations: 30}
