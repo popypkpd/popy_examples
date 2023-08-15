@@ -1,5 +1,14 @@
 METHOD_OPTIONS: {py_module: tut, rand_seed: 12345}
 
+DESCRIPTION:
+    name: cwres_emax_correct_model
+    title: Demonstration of CWRES diagnostic
+    author: PoPy for PK/PD
+    abstract: |
+        Demonstration of CWRES diagnostic on Hooker's Emax model with 
+        correct population parameters
+    keywords: ['cwres', 'emax']
+
 FILE_PATHS:
     # Output file extension - determines graphical output file format.
     output_file_ext: ['svg', "png"]
