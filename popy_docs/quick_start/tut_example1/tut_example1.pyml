@@ -66,6 +66,8 @@ OUTPUT_SCRIPTS:
             - "{OBS}_vs_PRED"
             - "{IRES}_vs_IPRED"
             - "{IWRES}_vs_IPRED"
+            - "{WRES}_vs_PRED"
+            - "{CWRES}_vs_IPRED"
         vpc_list:
             - "OBS_vs_TIME_VPC"
     COMP: {output_mode: run}
