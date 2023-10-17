@@ -30,20 +30,35 @@ MODEL_PARAMS: |
 DERIVATIVES: |
     s[DEPOT,CENTRAL] = @dep_one_cmp_cl{ dose: @bolus{amt:c[AMT]} }
 PREDICTIONS: |
-    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
-    clabel[TIME] = "Time (minutes)"
     p[DV_CENTRAL] = s[CENTRAL]/m[V]
+    plabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
     prop_std = p[DV_CENTRAL] * m[PNOISE_STD]
     add_std = m[ANOISE_STD]
     total_var = prop_std**2 + add_std**2
     c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], total_var)
+    clabel[DV_CENTRAL] = "Drug Concentration (mg/L)"
+    clabel[TIME] = "Time (minutes)"
 ODE_SOLVER: {ANALYTIC: {}}
 FIT_METHODS: 
     - ND: {max_n_main_iterations: 30}
-    # - JOE: {max_n_main_iterations: 30}
-    # - FOCE: {max_n_main_iterations: 30}
 OUTPUT_SCRIPTS:
-    GEN: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
-    FIT: {output_mode: run, sim_time_step: 1.0, grph_list: ["OBS_vs_TIME", "{OBS}_vs_TIME"]}
+    GEN: 
+        output_mode: run
+        sim_time_step: 1.0
+        grph_list: 
+            - "OBS_vs_TIME"
+            - "{OBS}_vs_TIME"
+            - "{IRES}_vs_IPRED"
+            - "{CWRES}_vs_IPRED"
+            - "{WRES}_vs_PRED"
+    FIT: 
+        output_mode: run
+        sim_time_step: 1.0
+        grph_list: 
+            - "OBS_vs_TIME"
+            - "{OBS}_vs_TIME"
+            - "{IRES}_vs_IPRED"
+            - "{CWRES}_vs_IPRED"
+            - "{WRES}_vs_PRED"
     COMP: {output_mode: run}
     TUTSUM: {output_mode: run}
