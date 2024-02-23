@@ -1,0 +1,689 @@
+# The text below was generated automatically by
+# the popy.conf.fio.pyml_writer module
+# Date: 2024-02-16-16-21-59
+# Code rev.: r8331-9e74ac606b969d07ee5a09ec56d514784b398f60+
+---
+
+METHOD_OPTIONS:
+    # Python module required to process this script file
+    py_module: fit
+
+    # Option to set seed to make run result
+    # reproducible -e.g. when debugging.
+    rand_seed: 12345
+
+    # Format string for numerical output
+    float_format: default
+
+    # Compiler to use for temp functions
+    cython_compiler: msvc
+
+PARALLEL: {SINGLE: {}}
+DESCRIPTION:
+    # Unique name used to distinguish script
+    name: my_pkpd_model
+
+    # A longer text string that could serve as a title
+    title: My PKPD model
+
+    # Author of the model
+    author: My Name
+
+    # Abstract paragraph describing model
+    abstract: |
+        Abstract describing the model
+
+    # Keywords list used to categorise models.
+    keywords: ['pkpd']
+
+FILE_PATHS:
+    # path to input comma separated value file in popy data format
+    input_data_file: Simulated_IVGTT_IGI.csv
+    
+    input_data_delimiter: ;
+
+    # Output folder - results of computation stored here
+    output_folder: auto
+
+    # Temp folder - temporary files stored here
+    temp_folder: auto
+
+    # Log folder - log files stored here
+    log_folder: auto
+
+    # Output file extension - determines graphical output file format.
+    output_file_ext: ['svg']
+
+    # Option to delete any existing files before running.
+    delete_old_files_flag: False
+
+    # Solution containing f[X] values from a previous run.
+    input_solution_file: none
+
+    # Option to output iteration-by-iteration values.
+    output_iteration_results: True
+
+DATA_FIELDS:
+    # Field name in data file that contains row type info, e.g. obs/dose etc
+    type_field: POPY_TYPE
+
+    # Field name in data file that contains identity string for each data row e.g. obs/dose etc
+    id_field: "ID"
+
+    # Field name in data file that contains time or event for each data row
+    time_field: TIME
+
+# Code that preprocesses the input data.
+# Use this to filter rows and create derived covariates.
+PREPROCESS: |
+    if int(c[ID]) != 1: return 
+    
+    if int(c[EVID]) == 4:
+        c[POPY_TYPE] = "reset+dose:c" + str(c[CMT])
+    elif int(c[EVID]) == 0:
+        c[POPY_TYPE] = "obs"
+    elif int(c[EVID]) == 1:
+        c[POPY_TYPE] = "dose:c" + str(c[CMT])
+        
+    c[TOTG] = c[GLUCOSE]
+    c[INSU] = c[INSULIN]
+    c[SRT3] = c[SORT3]
+    del c[GLUCOSE], c[INSULIN], c[SORT3]
+
+EFFECTS:
+    # This is the root record
+    POP: |
+        # ==$THETA==
+        f[VG] ~ P 9.16612318909858  # 3 (L)
+        f[KG] ~ P 0.0856544825911882  # 4 (/min)
+        f[KI] ~ P 1.2179912083266  # 5 (/min)
+        f[KGI] ~ P 6.71024822654209  #  6  (/min/pM)
+        f[KEOG] ~ P 0.0590522068938238  #  7 (/min) (0.08 for HV)
+        f[IFST] ~ P 661.784806539811  #  8 (pM/[mg/dl]) note:(0,3) for HV
+        f[Q] ~ P 0.472640233864405  #  9 
+        f[VP] ~ P 8.55073592707769  #  10 
+        f[K26] ~ P 0.0284945031485903  #  11 
+        # f[K62] ~ P .000799  # ; 12 
+        f[K62] = 0.000799  #  ) FIX ; 12 
+        f[KEOI] ~ P 0.021637630446828  #  13 
+        f[IPRG] ~ unif(0, 5) 1.43134552100246  #  14 
+        f[VI] ~ unif(3, inf) 6.04643669479359  # ; 15 
+        f[BASG_FAC] = 1  # ; 16 BASG_FAC; D2 - duration of ins. infusion
+        f[BASI_FACILAG] = 1  # FIX ; 17 BASI FACILAG INSULIN DOSE
+        f[GPRI] = 0  # FIX ; 18 GPRI
+        f[TOTG_PROP] ~ P 0.0435584975348915  #  19 TOTG PROP
+        f[INSU_PROP] ~ P 0.253989394960252  #  20 INSU PROP
+        f[HOTG_PROP] ~ P 0.105393878307098  #  21 HOTG PROP
+        f[EARLY_ERROR] ~ P 3.29549314960977  #  22 EARLY ERROR
+        f[GPRG] ~ unif(-5, 0) -2.88150187087608  #  23 GPRG
+        f[KIS] ~ P 0.3751721008462  #  24 
+        f[GELI] = 0  #  FIX ; 25 GELI
+        # ;--------patients-------
+        f[KG_pat] ~ P 0.0283941818021748  #  26 KG  (/min)
+        f[BASG_FAC_pat] ~ unif(0.5, 2) 0.892501172846716  #  27 BASG_FACpat
+        f[KGI_pat] ~ P 2.9744817285232  #  28 KGI (/min/pM)
+        f[IFST_pat] = 0  # FIX ; 29 IFST(pM/[mg/dl]) note:(0,3) for HV
+        f[BASI_FAC_pat] ~ unif (0.5, 2) 0.930501518914744  #  30 BASI_FACpat
+        f[RESH_pat] ~ P 0.0510225189046737  #  31 RESHpat
+        f[CLGIhvins_pat] ~ P 15.1573029861128  #  32 CLGIhvins
+        f[CLGIclamp_pat] ~ P 5.01845628714497  #  33 CLGIclamp
+        # f[IPRG_pat] = 0  # ; 34 IPRG
+        f[GPRI_pat] = 0  # ; 35 GPRI
+        f[GPRG_pat] = 0  # ; 36 GPRG
+        f[GELI_pat] = 0  # ; 37 GELI
+
+        # ==$OMEGA==
+        f[GSS_isv] = 1  # 1
+        f[ISS_isv] = 1  # 2
+        # $OMEGA  BLOCK(3)
+        # 0.0910824403788188  ;       3 VG
+        # -0.198169492436692 0.752054276962733  ;        4 Q
+        # 0.0807784065062901 -0.0939603544874258 0.173060574312854  ;       5 VI
+        f[VG_isv, Q_isv, VI_isv] ~ spd_matrix() [
+             [0.0910824403788188],  # ;       3 VG
+             [-0.198169492436692, 0.752054276962733],  #   ;        4 Q
+             [0.0807784065062901, -0.0939603544874258, 0.173060574312854],  #  ;       5 VI
+        ]
+        f[CLGI1_isv] = 0.0488457040826792  # ; 6 CLGI hv+clamp+hvins
+        # f[CLGI2_isv] = 0  # 7CLGI hvins
+        f[IFST_isv] = 0.424782381451217  # ;     8 IFST
+        f[KG_isv] = 0.362564306724732  # ;       9 KG
+        f[VP_isv] = 0.0885639396517315  # ;     10 VP_
+        f[K26_isv] = 0.608902226443451  # ;    11 K26_
+        f[CLGI_pat_isv] = 0.228265906658762  # ; 12 CLGI pat
+        f[KEOI_isv] = 0.350734462920572  # ;   13 KEOI_
+        f[IPRG_isv] = 0.128100473310518  # ;   14 IPRG_
+        f[KI_isv] = 0.0829671896846808  #;      15 KI
+        # $OMEGA  0  FIX  ;      16 D2
+        # $OMEGA  0  FIX  ;    17 ILAG
+        # $OMEGA  0  FIX  ;   18 GPRI_
+        # $OMEGA  0  FIX  ; 19 REST can't be used with HYBRID
+        # $OMEGA  0  FIX  ; 20 RESI can't be used with HYBRID
+        # $OMEGA  0  FIX  ; 21 RESH can't be used with HYBRID
+        # $OMEGA  0  FIX  ; 22 RESE can't be used with HYBRID
+        # $OMEGA  0  FIX  ;   23 GPRG_
+        # $OMEGA  0  FIX  ;    24 KIS_
+
+        f[ANOISE_var] = 1
+
+    # This is the root record
+    ID: |
+        r[GSS_isv] ~ norm(0, f[GSS_isv])  # 1
+        r[ISS_isv] ~ norm(0, f[ISS_isv])  # 2
+        r[VG_isv, Q_isv, VI_isv] ~ mnorm([0,0,0], f[VG_isv, Q_isv, VI_isv])  # 3,4,5
+        r[CLGI1_isv] ~ norm(0, f[CLGI1_isv])  # ; 6 CLGI hv+clamp+hvins
+        r[IFST_isv] ~ norm(0, f[IFST_isv])  # ;     8 IFST
+        r[KG_isv] ~ norm(0, f[KG_isv])  # ;       9 KG
+        r[VP_isv] ~ norm(0, f[VP_isv])  # ;     10 VP_
+        r[K26_isv] ~ norm(0, f[K26_isv])  # ;    11 K26_
+        r[CLGI_pat_isv] ~ norm(0, f[CLGI_pat_isv])  # ; 12 CLGI pat
+        r[KEOI_isv] ~ norm(0, f[KEOI_isv])  # ;   13 KEOI_
+        r[IPRG_isv] ~ norm(0, f[IPRG_isv])  # ;   14 IPRG_
+        r[KI_isv] ~ norm(0, f[KI_isv])  #;      15 KI
+
+# Defines the mapping from c[X], f[X] and r[X] variables to individual model m[X] parameters.
+MODEL_PARAMS: |
+    # IF(NEWIND.NE.2) BASG=TOTG
+    # IF(NEWIND.NE.2) BASI=INSU
+    
+    if c[EVID] == 4:
+        w[BASG] = c[TOTG]
+        w[BASI] = c[INSU]
+        
+    BASG = w[BASG]
+    BASI = w[BASI]
+
+    m[GSS] = BASG * exp(r[GSS_isv]*f[TOTG_PROP]) * f[BASG_FAC]
+    m[ISS] = BASI * exp(r[ISS_isv]*f[INSU_PROP]) * f[BASI_FACILAG]
+    if c[TYPE] == 2:
+        m[GSS] = BASG * exp(r[GSS_isv]*f[TOTG_PROP]) * f[BASG_FAC_pat]
+        m[ISS] = BASI * exp(r[ISS_isv]*f[INSU_PROP]) * f[BASI_FAC_pat]
+        CLGI = f[KGI] * exp(r[CLGI1_isv]) / 1000
+    elif c[TYPE] == 3:
+        m[ISS] = c[INSU]
+        CLGI = f[CLGIclamp_pat] * exp(r[CLGI1_isv]) / 1000
+    elif c[TYPE] == 4:
+        CLGI = f[CLGIhvins_pat] * exp(r[CLGI1_isv]) / 1000
+    else:
+        CLGI = f[KGI] * exp(r[CLGI1_isv]) / 1000
+    
+    # ;----------------------Initializing other parameters--------
+    # ;
+    # VG  = THETA(3)*EXP(ETA(3))*BW/70     ;Central volume for glucose
+    m[VG] = f[VG] * exp(r[VG_isv]) * c[BW]/70
+    
+    # CLG  = THETA(4)*EXP(ETA(9))            ;k10 for glucose disappear
+    CLG = f[KG] * exp(r[KG_isv])
+    # CLI  = THETA(5)*EXP(ETA(15))            ;k10 for insulin disappear
+    CLI = f[KI] * exp(r[KI_isv])
+    # KEOG= THETA(7);*EXP(ETA(7))            ;keo for glucose 
+    m[KEOG] = f[KEOG]  # * exp(r[])
+    # IFST= THETA(8)*EXP(ETA(8))            ;primary insulin response (lacking for patients)
+    m[IFST] = f[IFST] * exp(r[IFST_isv])
+    # Q   = THETA(9)*EXP(ETA(4))            ;k12 for glucose
+    m[Q] = f[Q] * exp(r[Q_isv])
+    # VP  = THETA(10)*EXP(ETA(10))          ;k21 for glucose
+    m[VP] = f[VP] * exp(r[VP_isv])
+
+    # K15 = Q/VG
+    m[K15] = m[Q] / m[VG]
+    # K51 = Q/VP
+    m[K51] = m[Q] / m[VP]
+
+    # K26 = THETA(11)*EXP(ETA(11))          ;k12 for insulin
+    m[K26] = f[K26] * exp(r[K26_isv])
+    # K62 = THETA(12);*EXP(ETA(12))          ;k21 for insulin
+    m[K62] = f[K62]  # * exp(r[])
+    # KEOI= THETA(13)*EXP(ETA(13))          ;keo for insulin
+    m[KEOI] = f[KEOI] * exp(r[KEOI_isv])
+    # IPRG= THETA(14)*EXP(ETA(14))          ;influence of glucose on insulin production
+    m[IPRG] = f[IPRG] * exp(r[IPRG_isv])
+
+    # VI  = THETA(15)*EXP(ETA(5))*BW/70    ;central volume for insulin
+    m[VI] = f[VI] * exp(r[VI_isv]) * c[BW]/70
+
+    # ;ILAG= THETA(17)*EXP(ETA(17))          ;lag-time for insulin infusion
+    # m[BASI_FACILAG] = f[BASI_FACILAG]  # * exp(r[])
+    # GPRI= THETA(18)*EXP(ETA(18))          ;influence of insulin on glucose production
+    m[GPRI] = f[GPRI] # * exp(r[])
+    # REST= THETA(19)*EXP(ETA(19))          ;CV for total glucose residual error
+    m[REST] = f[TOTG_PROP]  # * exp(r[])
+    # RESI= THETA(20)*EXP(ETA(20))          ;CV for       insulin residual error
+    m[RESI] = f[INSU_PROP]  # * exp(r[])
+    # RESH= THETA(21)*EXP(ETA(21))          ;CV for hot   glucose residual error
+    m[RESH] = f[HOTG_PROP]  # * exp(r[])
+    # RESE= THETA(22)*EXP(ETA(22))          ;correction factor for early residual error
+    m[RESE] = f[EARLY_ERROR]  # * exp(r[])
+    # GPRG= THETA(23)*EXP(ETA(23))          ;influence of glucose on glucose production
+    m[GPRG] = f[GPRG]  # * exp(r[])
+    # KIS = THETA(24)*EXP(ETA(24))          ;k92 "ka" for insulin
+    m[KIS] = f[KIS]  # * exp(r[])
+
+    # GELI= THETA(25)                       ;
+    m[GELI] = f[GELI]
+    
+    # IF (TYPE.EQ.2) THEN
+    if c[TYPE] == 2:
+        # ;----------------------Initializing other parameters--------
+        # CLG  = THETA(26)*EXP(ETA(9))            ;k10 for glucose disappear
+        CLG = f[KG_pat] * exp(r[KG_isv])
+
+        # ;  VG  = THETA(27)*EXP(ETA(3))            ;VG for patients
+
+        # CLGI = THETA(28)*EXP(ETA(12))/1000       ;2nd order rate constant for insulin-dep. glucose elimination
+        CLGI = f[KGI_pat] * exp(r[CLGI_pat_isv])
+
+        # IFST= THETA(29)*EXP(ETA(8))            ;primary insulin response (lacking for patients)
+        m[IFST] = f[IFST_pat] * exp(r[IFST_isv])
+
+        # RESH = THETA(31)                       ;RESH for glucose
+        m[RESH] = f[RESH_pat]
+        
+        # ; K51 = THETA(31)*EXP(ETA(10))          ;k21 for glucose
+        # ; K26 = THETA(32)*EXP(ETA(11))          ;k12 for insulin
+        # ; K62 = THETA(33)*EXP(ETA(12))          ;k21 for insulin
+        # ; IPRG= THETA(34)*EXP(ETA(14))          ;influence of glucose on insulin production
+        # GPRI= THETA(35)*EXP(ETA(18))          ;influence of insulin on glucose production
+        m[GPRI] = f[GPRI_pat] # * exp(r[KG_isv])
+
+        # GPRG= THETA(36)*EXP(ETA(23))          ;influence of glucose on glucose production
+        m[GPRG] = f[GPRG_pat] # * exp(r[KG_isv])
+
+        # GELI= THETA(37)                       ;
+        m[GELI] = f[GELI_pat]
+    # ENDIF
+    
+    # ;----------------production and initializing compartments------------
+    # KG  = CLG/VG                          ;k10 for glucose disappear
+    m[KG] = CLG/m[VG]
+    # KGI = CLGI/VG                         ;2nd order rate constant for insulin-dep. glucose elimination
+    m[KGI] = CLGI/m[VG]
+    # KI  = CLI/VI                          ;duration of insulin infusion
+    m[KI] = CLI/m[VI]
+    # GPRO= GSS*(KG+KGI*ISS)*m[VG]             ;baseline glucose production
+    m[GPRO] = m[GSS]*(m[KG] + m[KGI] + m[ISS])*m[VG]
+    # IPRO= KI*m[ISS]*m[VI]                       ;baseline insulin production
+    m[IPRO] = m[KI]*m[ISS]*m[VI]
+    
+    # m[F1]  = BW/10                            ;correction for glucose in mg/dl
+    # IF(AMT.EQ.1) m[F1]=GSS*m[VG]                         
+    if c[AMT] == 1:
+        m[F1] = m[GSS]*m[VG]
+    else:
+        m[F1] = c[BW]/10
+        
+    # m[F2]  = 0
+    # IF(SRT3.EQ.0) m[F2]=m[ISS]*m[VI]
+    if c[SRT3] == 0:
+        m[F2] = m[ISS]*m[VI]
+    else:
+        m[F2] = 0
+        
+    # m[F3]  = BW/10        
+    m[F3] = c[BW]/10
+    
+    # m[F4]  = GSS
+    m[F4] = m[GSS]
+    
+    # m[F5]  = K15*GSS*m[VG]/K51
+    m[F5] = m[K15]*m[GSS]*m[VG]/m[K51]
+    
+    # m[F6]  = GSS       ;K26*m[ISS]*m[VI]/K62
+    m[F6] = m[GSS]
+    
+    # No dose to compartment 7
+    # # m[F7]  = 0
+    # m[F7] = 0
+    
+    # m[F8]  = ISS
+    m[F8]  = m[ISS]
+    
+    # m[F9]  = IFST
+    m[F9]  = m[IFST]
+
+    # IINF = 0
+    m[IINF] = 0
+    if c[TYPE] == 2:
+        # IF(TYPE.EQ.2) m[F1]  = 1/10                            ;correction for glucose in mg/dl
+        # IF(TYPE.EQ.2.AND.AMT.EQ.1) m[F1]=GSS*m[VG]                         
+        # IF(TYPE.EQ.2)   m[F2]  = m[ISS]*m[VI]
+        # IF(TYPE.EQ.2.AND.TIME.GT.0) m[F2]=1
+        # IF(TYPE.EQ.2)  m[F3]  = 0.26/10
+        if c[AMT] == 1:
+            m[F1] = m[GSS]*m[VG]
+        else:
+            m[F1] = 1/10
+        if c[TIME] > 0:
+            m[F2] = 1
+        else:
+            m[F2] = m[ISS]*m[VI]
+        m[F3] = 0.26/10
+    elif c[TYPE] == 3:
+        # IF(TYPE.EQ.3)  m[F1]  = 1/1000
+        # IF(TYPE.EQ.3.AND.AMT.EQ.1)  m[F1]  = GSS*m[VG]
+        # IF(TYPE.EQ.3)  m[F3]  = 1/1000
+        # IF(TYPE.EQ.3)  m[F9]  = 0
+        # ;IF(TYPE.EQ.3.AND.TIME.GT.150) IINF = 1*BW
+        if c[AMT] == 1:
+            m[F1] = m[GSS]*m[VG]
+        else:
+            m[F1] = 1/1000
+        m[F3] = 1/1000
+        m[F9] = 0
+        if c[TIME] > 150:
+            m[IINF] = c[BW]
+    elif c[TYPE] == 4:
+        # IF(TYPE.EQ.4)  m[F1]  = BW/10
+        # IF(TYPE.EQ.4.AND.AMT.EQ.1)  m[F1]  = GSS*m[VG]
+        # IF(TYPE.EQ.4)  m[F3]  = BW
+        # IF(TYPE.EQ.4.AND.TIME.GT.0) m[F2]=1
+        if c[AMT] == 1:
+            m[F1] = m[GSS]*m[VG]
+        else:
+            m[F1] = c[BW]/10
+        if c[TIME] > 0:
+            m[F2] = 1
+        m[F3] = c[BW]
+    
+    m[ANOISE_var] = f[ANOISE_var]
+    
+# Optional section for setting initial values of s[X] variables
+# can also set slabel[X] text labels.
+STATES: |
+    # $MODEL      COMP=TOT_C ;1
+                # COMP=INS_C ;2
+                # COMP=HOT_C ;3
+                # COMP=TOT_E ;4 effect compartment for glucose
+                # COMP=PER_C ;5
+                # COMP=PER_I ;6
+                # COMP=PER_H ;7
+                # COMP=INS_E ;8 effect compartment for insulin
+                # COMP=INS_S ;9 secretion compartment for insulin
+
+    # IF(A_0FLG.EQ.1) THEN
+        # IF(TYPE.EQ.2) A_0(9)=IFST
+    # ENDIF
+    if c[TYPE] == 2:
+        s[INS_S] = m[IFST]
+        
+# Define how the covariates and effects determine flows
+# between compartments.
+DERIVATIVES: |
+    # $DES         
+        # PK Model
+        # ===
+        
+        # # PINS   = K26*A(2)-K62*A(6)             ;distribution of     insulin
+        # PINS = m[K26]*s[INS_C] - m[K62]*s[PER_I]
+        
+        # # IF(TYPE.EQ.3) IPRD=IPRO
+        # if c[TYPE] == 3:
+            # IPRD = m[IPRO]
+            
+        # GIEL   = (A(8)/ISS+.0001)**GELI       ;insulin on glucose elimination
+        GIEL = (s[INS_E]/m[ISS]+0.0001)**m[GELI]
+
+        # GIPR   = (A(8)/ISS+.0001)**GPRI              ;insulin on glucose production
+        GIPR = (s[INS_E]/m[ISS]+0.0001)**m[GPRI]
+        # GGPR   = (A(4)/GSS+.0001)**GPRG              ;glucose on glucose production
+        GGPR = (s[TOT_E]/m[GSS]+0.0001)**m[GPRG]
+        GPRDG   = m[GPRO]*GIPR*GGPR  #              ;glucose production
+        # TELI   = (KG + KGI*A(8)*GIEL)*A(1)          ;tot glucose elimination
+        TELI = (m[KG] + m[KGI]*s[INS_E]*GIEL)*s[TOT_C]
+        # PTOT   = K15*A(1)-K51*A(5)             ;distribution of tot glucose
+        PTOT = m[K15]*s[TOT_C] - m[K51]*s[PER_C]
+        # DADT(1) = GPRDG - TELI - PTOT
+        d[TOT_C] = @bolus{name: "c1", amt: c[AMT]*m[F1]} + GPRDG - TELI - PTOT
+        # DADT(5) = PTOT
+        d[PER_C] = @bolus{name: "c5", amt: c[AMT]*m[F5]} + PTOT
+        
+        # IGPR   = (A(6)/GSS+.0001)**IPRG              ;glucose on insulin production
+        IGPR = (s[PER_I]/m[GSS]+0.0001)**m[IPRG]
+        IPRDG   = m[IPRO]*IGPR  #                   ;insulin production
+        # IELI   =      KI        *A(2)          ;    insulin elimination
+        IELI = m[KI]*s[INS_C]
+        # DADT(2) = IINF+IPRDG + KIS*A(9)- IELI 
+        d[INS_C] = @bolus{name: "c2", amt: c[AMT]*m[F2]} + m[IINF] + IPRDG + m[KIS]*s[INS_S] - IELI
+
+        # HELI   = (KG + KGI*A(8)*GIEL)*A(3)          ;hot glucose elimination
+        HELI = (m[KG] + m[KGI]*s[INS_E]*GIEL)*s[HOT_C]
+        # PHOT   = K15*A(3)-K51*A(7)             ;distribution of hot glucose
+        PHOT = m[K26]*s[HOT_C] - m[K62]*s[PER_H]
+        # DADT(3) =      - HELI - PHOT
+        d[HOT_C] = @bolus{name: "c3", amt: c[AMT]*m[F3]} - HELI - PHOT
+        # DADT(7) = PHOT
+        # No dose to compartment 7
+        d[PER_H] = PHOT
+
+        # PD model
+        # ===
+        
+        # DADT(4) = KEOG*(A(1)/VG - A(4))        ;tot glucose effect compartment
+        d[TOT_E] = @bolus{name: "c4", amt: c[AMT]*m[F4]} + m[KEOG]*(s[TOT_C]/m[VG] - s[TOT_E]) 
+        # DADT(6) = K26*(A(1)/VG - A(6))        ;tot glucose effect compartment
+        d[PER_I] = @bolus{name: "c6", amt: c[AMT]*m[F6]} + m[K26]*(s[TOT_C]/m[VG] - s[PER_I])
+        # DADT(8) = KEOI*(A(2)/VI - A(8))        ;insulin effect-compartment
+        d[INS_E] = @bolus{name: "c8", amt: c[AMT]*m[F8]} + m[KEOI]*(s[INS_C]/m[VI] - s[INS_E])
+        # DADT(9) = -KIS*A(9)
+        d[INS_S] = @bolus{name: "c9", amt: c[AMT]*m[F9]} - m[KIS]*s[INS_S]
+
+# Define the final predicted m[X] variables to be output
+# by the compartment model system.
+PREDICTIONS: |
+    # CTOT    =A(1)/VG
+    # CINS    =A(2)/VI
+    # CHOT    =A(3)/VG
+    # TEFF    =A(4)
+    # TPER    =A(5)
+    # IPER    =A(6)
+    # HPER    =A(7)
+    # IEFF    =A(8)
+    # ISEC    =A(9)
+
+    # ;----------additional calculations----------- 
+    # GRAT = TEFF/GSS                            ;glucose eff comp to GSS ratio (concentrations) 
+    # IRAT = IEFF/ISS                            ;insulin eff comp to ISS ratio (concentrations)
+    # PRAT = IPER/(K26*m[ISS]*m[VI]/K62)               ;insulin per comp to initial conc ratio (amounts)
+    # GLEF = (GRAT+.0001)**IPRG                  ;glucose eff on insulin prod 
+    # INPR = (KI*m[ISS]*m[VI])*(A(4)/GSS+.0001)**IPRG  ;total insulin production 
+    # PRO3 = (INPR+K62*IPER)                ;"actual" production
+    # PRO4 = INPR/(INPR+K62*IPER)                ;"actual" production
+    # ELIM = KI*CINS                             ;insulin elimination
+    # IOUT = K26*(CINS-ISS)                       ;delta flow out of comp 2
+    # IIN  = K62*(IPER-K26*m[ISS]*m[VI]/K62)            ;delta flow out of comp 6
+    # PNET = IOUT-IIN                            ;net flow in comp 2
+
+    if c[CMT] == 1:
+        # CTOT    =A(1)/VG
+        # IF (CMT.EQ.1) IPRED = CTOT+.00001
+        IPRED = s[TOT_C]/m[VG] + 0.00001
+        # IF (CMT.EQ.1) W = REST
+        W = m[REST]
+    elif c[CMT] == 2:
+        # CINS    =A(2)/VI
+        # IF (CMT.EQ.2) IPRED = CINS+.00001
+        p[DV] = s[INS_C]/m[VI] + 0.00001
+        # IF (CMT.EQ.2) W = RESI
+        W = m[RESI]
+    elif c[CMT] == 3:
+        # CHOT    =A(3)/VG
+        # IF (CMT.EQ.3) IPRED = CHOT+.00001
+        p[DV] = s[HOT_C]/m[VG] + 0.00001
+        # IF (CMT.EQ.3) W = RESH
+        W = m[RESH]
+    else:
+        # IF (CMT.GE.4) IPRED = 1
+        p[DV] = 1
+        # IF (CMT.GE.4) W = 1
+        W = 1
+        
+    # IF(TIME.LE.2) W = W*RESE
+    if c[TIME] < 2:
+        W = W * m[RESE]
+
+    # Y     = LOG(IPRED) + ERR(1)*W
+    var = m[ANOISE_var]*W**2
+    c[LDV] ~ norm(log(p[DV]), var)
+    
+    # IRES  = DV-LOG(IPRED)
+    # IWRES = IRES/W
+    
+    # PRD   = IPRED
+    # IPRED = LOG(IPRED)
+    # OBS   = ODV
+
+ODE_SOLVER:
+    CPPLSODA:
+        # Absolute tolerance of ode solver.
+        atol: 1e-06
+
+        # Relative tolerance of ode solver.
+        rtol: 1e-06
+
+        # Maximum number of steps allowed in ode solver.
+        max_nsteps: 10000000
+
+        # Option to combine sections into supersections, which can make PoPy run faster, however with discontinuous ODE params you may need to turn this off (closer to nonmem approach).
+        use_supersections: True
+
+        # Option to use sensitivity equations in ode solver.
+        use_sens: False
+
+        # Minimum step size of ode solver.
+        hmin: 0.0
+
+FIT_METHODS:
+    - JOE:
+        ODE_SOLVER: {INHERIT: {}}
+        # Option to output timing info.
+        output_timing_flag: False
+
+        # Option to output warning detail.
+        output_warning_detail_flag: True
+
+        # Maximum number of iterations
+        max_n_main_iterations: 0
+
+        CONVERGER:
+            OBJ_INC:
+                # If objective function in successive main iterations varies by less than this parameter then terminate main optimisation.
+                main_opt_atol: 1e-06
+
+                # Minimum number of iterations before allowing a declaration of
+                # convergence, zero is a null option here.
+                min_its: 0
+
+        # max number of fe iterations within one main iteration.
+        max_n_fe_iterations: 250
+
+        # If objective function in successive fe iterations varies by less than this parameter then terminate fe optimisation.
+        fe_opt_rtol: 1e-06
+
+        # Option to use full laplacian to compute hessian in objective function term4, this is much slower than using the expectation of the outer product of the jacobian
+        use_laplacian: False
+
+        # Option to use chain rule when computing derivatives.
+        use_chain: True
+
+        # f[X] step size used in fitting method.
+        delta_f: 0.001
+
+        # Option to use either leastsq or newton to optimise noise f[X] params.
+        fe_noise_opt_method: leastsq_dlik_dz
+
+        # Option to use either leastsq or nonmem to optimise f[X] associated with r[X]
+        fe_assoc_opt_method: grad_symb_linear
+
+        # Option to use either leastsq or newton optimiser to optimise f[X] NOT associated with r[X]
+        fe_unassoc_opt_method: leastsq
+
+        # Option to use either leastsq or sample var f[X] optimiser
+        fe_var_opt_method: sample_quick
+
+        # Optimiser for mean f[X] params.
+        fe_mean_opt_method: none
+
+        # Flag to switch on parallelisation for mean f[X] optimiser.
+        fe_mean_opt_para_flag: False
+
+        # Option to use either leastsq, leastsq_var, newton or leastsq_lmbda r[X] optimiser
+        re_opt_method: leastsq
+
+        # Max number of re iterations within one main iteration.
+        max_n_re_iterations: 500
+
+        # if objective function in successive re iterations varies by less than this parameter then terminate re optimisation.
+        re_opt_rtol: 1e-06
+
+        # Scale of step size when minimizing with L-M.
+        re_step_scale: 100.0
+
+        # r[X] step size used in fitting method.
+        delta_r: 1e-06
+
+        # Option to use custom jacobian when optimising r[X] using L-M.
+        use_lm_jac: True
+
+        # Option to use either lm/trf/dogbox in scipy leastsq to optimise r[X]
+        lm_method: lm
+
+        # Momentum to apply to f[X] optimisation
+        fe_momentum_rate: 0.0
+
+        # Parameter to control 50% point on parameter derived from
+        # current iteration, zero is a null value.
+        iteration_50_level: 1.0
+
+        # Inflate factor applied to var and noise parameters
+        # on each iteration, zero is null value.
+        inflate_factor: 0.5
+
+        # Reset r[X]=0.0 before each r[X] optimisation
+        reset_re_flag: True
+
+        # Perform an extra line search after assoc + noise f[X] opt
+        extra_line_search_flag: False
+
+        # Make the f[X] updates separately instead of in serial
+        separate_fe_update_flag: False
+
+COVARIANCE: {NO_COVARIANCE: {}}
+OUTPUT_SCRIPTS:
+    GRPH:
+        # Output options.
+        output_mode: none
+
+        # Graph types to plt
+        grph_list: ['OBS_vs_TIME']
+
+    TABLE:
+        # Output options.
+        output_mode: none
+
+        tables_list: []
+
+    SIM:
+        # Output options.
+        output_mode: run
+
+        # Size of time step when creating smooth curve predictions
+        # note setting this to a negative value, results in
+        # simulated predictions for each individual
+        # ONLY at time points in the original data set.
+        sim_time_step: 1.0
+
+        # Graph types to plt
+        grph_list: ['OBS_vs_TIME']
+
+        tables_list: []
+
+    MSIM:
+        # Output options.
+        output_mode: create
+
+        # List of vpc types to generate in popy_vpc script.
+        vpc_list: ['OBS_vs_TIME_VPC']
+
+    FITSUM:
+        # Output options.
+        output_mode: run
