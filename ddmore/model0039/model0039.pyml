@@ -1,7 +1,7 @@
 # The text below was generated automatically by
-# the popy.conf.fio.pyml_writer module
-# Date: 2024-02-16-16-21-59
-# Code rev.: r8331-9e74ac606b969d07ee5a09ec56d514784b398f60+
+# the popc.conf.fio.pyml_writer module
+# Date: 2024-02-29-09-56-31
+# Code rev.: r-academic
 ---
 
 METHOD_OPTIONS:
@@ -14,9 +14,6 @@ METHOD_OPTIONS:
 
     # Format string for numerical output
     float_format: default
-
-    # Compiler to use for temp functions
-    cython_compiler: msvc
 
 PARALLEL: {SINGLE: {}}
 DESCRIPTION:
@@ -38,9 +35,7 @@ DESCRIPTION:
 
 FILE_PATHS:
     # path to input comma separated value file in popy data format
-    input_data_file: Simulated_IVGTT_IGI.csv
-    
-    input_data_delimiter: ;
+    input_data_file: Simulated_IVGTT_IGI_commas.csv
 
     # Output folder - results of computation stored here
     output_folder: auto
@@ -76,11 +71,8 @@ DATA_FIELDS:
 # Code that preprocesses the input data.
 # Use this to filter rows and create derived covariates.
 PREPROCESS: |
-    # if int(c[ID]) != 15: return 
-    # if c[TYPE] > 3: return
-    # if c[TIME] > 24: return
-    if c[CMT] == 0: return
-    
+    if int(c[ID]) in (9, 12): return
+
     if int(c[EVID]) == 4:
         c[POPY_TYPE] = "reset+dose:c" + str(c[CMT])
     elif int(c[EVID]) == 0:
@@ -106,14 +98,14 @@ EFFECTS:
         f[KGI] ~ P 6.71024822654209  #  6  (/min/pM)
         f[KEOG] ~ P 0.0590522068938238  #  7 (/min) (0.08 for HV)
         f[IFST] ~ P 661.784806539811  #  8 (pM/[mg/dl]) note:(0,3) for HV
-        f[Q] ~ P 0.472640233864405  #  9 
-        f[VP] ~ P 8.55073592707769  #  10 
-        f[K26] ~ P 0.0284945031485903  #  11 
-        # f[K62] ~ P .000799  # ; 12 
-        f[K62] = 0.000799  #  ) FIX ; 12 
-        f[KEOI] ~ P 0.021637630446828  #  13 
-        f[IPRG] ~ unif(0, 5) 1.43134552100246  #  14 
-        f[VI] ~ unif(3, inf) 6.04643669479359  # ; 15 
+        f[Q] ~ P 0.472640233864405  #  9
+        f[VP] ~ P 8.55073592707769  #  10
+        f[K26] ~ P 0.0284945031485903  #  11
+        # f[K62] ~ P .000799  # ; 12
+        # f[K62] = 0.000799  #  ) FIX ; 12
+        f[KEOI] ~ P 0.021637630446828  #  13
+        f[IPRG] ~ unif(0, 5) 1.43134552100246  #  14
+        f[VI] ~ unif(3, inf) 6.04643669479359  # ; 15
         f[BASG_FAC] = 1  # ; 16 BASG_FAC; D2 - duration of ins. infusion
         f[BASI_FACILAG] = 1  # FIX ; 17 BASI FACILAG INSULIN DOSE
         f[GPRI] = 0  # FIX ; 18 GPRI
@@ -122,9 +114,9 @@ EFFECTS:
         f[HOTG_PROP] ~ P 0.105393878307098  #  21 HOTG PROP
         f[EARLY_ERROR] ~ P 3.29549314960977  #  22 EARLY ERROR
         f[GPRG] ~ unif(-5, 0) -2.88150187087608  #  23 GPRG
-        f[KIS] ~ P 0.3751721008462  #  24 
+        f[KIS] ~ P 0.3751721008462  #  24
         f[GELI] = 0  #  FIX ; 25 GELI
-        
+
         # # ;--------patients-------
         f[KG_pat] ~ P 0.0283941818021748  #  26 KG  (/min)
         f[BASG_FAC_pat] ~ unif(0.5, 2) 0.892501172846716  #  27 BASG_FACpat
@@ -143,87 +135,88 @@ EFFECTS:
 
     # This is the root record
     ID: |
-        # # ==$OMEGA==
-        # f[GSS_isv] = 1  # 1
-        # # f[ISS_isv] = 1  # 2
-        # # # $OMEGA  BLOCK(3)
-        # # # 0.0910824403788188  ;       3 VG
-        # # # -0.198169492436692 0.752054276962733  ;        4 Q
-        # # # 0.0807784065062901 -0.0939603544874258 0.173060574312854  ;       5 VI
-        # f[VG_isv, Q_isv, VI_isv] ~ spd_matrix() [
-             # [0.0910824403788188],  # ;       3 VG
-             # [-0.198169492436692, 0.752054276962733],  #   ;        4 Q
-             # [0.0807784065062901, -0.0939603544874258, 0.173060574312854],  #  ;       5 VI
-        # ]
-        # # f[CLGI1_isv] = 0.0488457040826792  # ; 6 CLGI hv+clamp+hvins
-        # # # f[CLGI2_isv] = 0  # 7CLGI hvins
-        # # f[IFST_isv] = 0.424782381451217  # ;     8 IFST
-        # f[KG_isv] = 0.362564306724732  # ;       9 KG
-        # f[VP_isv] = 0.0885639396517315  # ;     10 VP_
-        # # f[K26_isv] = 0.608902226443451  # ;    11 K26_
-        # # f[CLGI_pat_isv] = 0.228265906658762  # ; 12 CLGI pat
-        # # f[KEOI_isv] = 0.350734462920572  # ;   13 KEOI_
-        # # f[IPRG_isv] = 0.128100473310518  # ;   14 IPRG_
-        # # f[KI_isv] = 0.0829671896846808  #;      15 KI
-        # # $OMEGA  0  FIX  ;      16 D2
-        # # $OMEGA  0  FIX  ;    17 ILAG
-        # # $OMEGA  0  FIX  ;   18 GPRI_
-        # # $OMEGA  0  FIX  ; 19 REST can't be used with HYBRID
-        # # $OMEGA  0  FIX  ; 20 RESI can't be used with HYBRID
-        # # $OMEGA  0  FIX  ; 21 RESH can't be used with HYBRID
-        # # $OMEGA  0  FIX  ; 22 RESE can't be used with HYBRID
-        # # $OMEGA  0  FIX  ;   23 GPRG_
-        # # $OMEGA  0  FIX  ;    24 KIS_
+        # ==$OMEGA==
+        f[GSS_isv] = 1  # 1
+        f[ISS_isv] = 1  # 2
+        # $OMEGA  BLOCK(3)
+        # 0.0910824403788188  ;       3 VG
+        # -0.198169492436692 0.752054276962733  ;        4 Q
+        # 0.0807784065062901 -0.0939603544874258 0.173060574312854  ;       5 VI
+        f[VG_isv, Q_isv, VI_isv] ~ spd_matrix() [
+             [0.0910824403788188],  # ;       3 VG
+             [-0.198169492436692, 0.752054276962733],  #   ;        4 Q
+             [0.0807784065062901, -0.0939603544874258, 0.173060574312854],  #  ;       5 VI
+        ]
+        f[KG_isv] = 0.362564306724732  # ;       9 KG
+        f[KI_isv] = 0.0829671896846808  #;      15 KI
+        f[CLGI1_isv] = 0.0488457040826792  # ; 6 CLGI hv+clamp+hvins
+        # # f[CLGI2_isv] = 0  # 7CLGI hvins
+        f[CLGI_pat_isv] = 0.228265906658762  # ; 12 CLGI pat
+        f[IFST_isv] = 0.424782381451217  # ;     8 IFST
+        f[VP_isv] = 0.0885639396517315  # ;     10 VP_
+        f[K26_isv] = 0.608902226443451  # ;    11 K26_
+        f[KEOI_isv] = 0.350734462920572  # ;   13 KEOI_
+        f[IPRG_isv] = 0.128100473310518  # ;   14 IPRG_
+        # $OMEGA  0  FIX  ;      16 D2
+        # $OMEGA  0  FIX  ;    17 ILAG
+        # $OMEGA  0  FIX  ;   18 GPRI_
+        # $OMEGA  0  FIX  ; 19 REST can't be used with HYBRID
+        # $OMEGA  0  FIX  ; 20 RESI can't be used with HYBRID
+        # $OMEGA  0  FIX  ; 21 RESH can't be used with HYBRID
+        # $OMEGA  0  FIX  ; 22 RESE can't be used with HYBRID
+        # $OMEGA  0  FIX  ;   23 GPRG_
+        # $OMEGA  0  FIX  ;    24 KIS_
 
-        # r[GSS_isv] ~ norm(0, f[GSS_isv])  # 1
-        # # r[ISS_isv] ~ norm(0, f[ISS_isv])  # 2
-        # r[VG_isv, Q_isv, VI_isv] ~ mnorm([0,0,0], f[VG_isv, Q_isv, VI_isv])  # 3,4,5
-        # # r[CLGI1_isv] ~ norm(0, f[CLGI1_isv])  # ; 6 CLGI hv+clamp+hvins
-        # # r[IFST_isv] ~ norm(0, f[IFST_isv])  # ;     8 IFST
-        # r[KG_isv] ~ norm(0, f[KG_isv])  # ;       9 KG
-        # r[VP_isv] ~ norm(0, f[VP_isv])  # ;     10 VP_
-        # # r[K26_isv] ~ norm(0, f[K26_isv])  # ;    11 K26_
-        # # r[CLGI_pat_isv] ~ norm(0, f[CLGI_pat_isv])  # ; 12 CLGI pat
-        # # r[KEOI_isv] ~ norm(0, f[KEOI_isv])  # ;   13 KEOI_
-        # # r[IPRG_isv] ~ norm(0, f[IPRG_isv])  # ;   14 IPRG_
-        # # r[KI_isv] ~ norm(0, f[KI_isv])  #;      15 KI
+        r[GSS_isv] ~ norm(0, f[GSS_isv])  # 1
+        r[ISS_isv] ~ norm(0, f[ISS_isv])  # 2
+        r[VG_isv, Q_isv, VI_isv] ~ mnorm([0,0,0], f[VG_isv, Q_isv, VI_isv])  # 3,4,5
+        r[KG_isv] ~ norm(0, f[KG_isv])  # ;       9 KG
+        r[KI_isv] ~ norm(0, f[KI_isv])  #;      15 KI
+        r[CLGI1_isv] ~ norm(0, f[CLGI1_isv])  # ; 6 CLGI hv+clamp+hvins
+        r[CLGI_pat_isv] ~ norm(0, f[CLGI_pat_isv])  # ; 12 CLGI pat
+        r[IFST_isv] ~ norm(0, f[IFST_isv])  # ;     8 IFST
+        r[VP_isv] ~ norm(0, f[VP_isv])  # ;     10 VP_
+        r[K26_isv] ~ norm(0, f[K26_isv])  # ;    11 K26_
+        r[KEOI_isv] ~ norm(0, f[KEOI_isv])  # ;   13 KEOI_
+        r[IPRG_isv] ~ norm(0, f[IPRG_isv])  # ;   14 IPRG_
 
 # Defines the mapping from c[X], f[X] and r[X] variables to individual model m[X] parameters.
 MODEL_PARAMS: |
     if c[EVID] == 4:
         w[BASG] = c[TOTG]
         w[BASI] = c[INSU]
-        
+
     BASG = w[BASG]
     BASI = w[BASI]
 
-    CLGI = f[KGI] / 1000 ##* exp(r[CLGI1_isv])
-    CLG = f[KG] ##* exp(r[KG_isv])
-    CLI = f[KI] ##* exp(r[KI_isv])
-    Q = f[Q] ##* exp(r[Q_isv])
+    CLGI = f[KGI] / 1000 * exp(r[CLGI1_isv])
+    CLG = f[KG] * exp(r[KG_isv])
+    CLI = f[KI] * exp(r[KI_isv])
 
-    m[GSS] = BASG * f[BASG_FAC] ##* exp(r[GSS_isv]*f[TOTG_PROP]) 
-    m[ISS] = BASI * f[BASI_FACILAG]  ##* exp(r[ISS_isv]*f[INSU_PROP])
-    m[IFST] = f[IFST] ##* exp(r[IFST_isv])
-    m[RESH] = f[HOTG_PROP]  # * exp(r[])
-    m[GPRI] = f[GPRI] # * exp(r[])
-    m[GPRG] = f[GPRG]  # * exp(r[])
+    m[GSS] = BASG * f[BASG_FAC] * exp(r[GSS_isv]*f[TOTG_PROP])
+    m[ISS] = BASI * f[BASI_FACILAG] * exp(r[ISS_isv]*f[INSU_PROP])
+    m[IFST] = f[IFST] * exp(r[IFST_isv])
+    m[IPRG] = f[IPRG] * exp(r[IPRG_isv])
+    
+    m[GPRI] = f[GPRI] 
+    m[GPRG] = f[GPRG] 
     m[GELI] = f[GELI]
 
-    m[K26]  = f[K26] ##* exp(r[K26_isv])
-    m[K62]  = f[K62]  # * exp(r[])
-    m[KEOG] = f[KEOG]  # * exp(r[])
-    m[KEOI] = f[KEOI] ##* exp(r[KEOI_isv])
-    m[IPRG] = f[IPRG] ##* exp(r[IPRG_isv])
+    m[K26]  = f[K26] * exp(r[K26_isv])
+    # m[K62]  = f[K62]  
+    m[KEOG] = f[KEOG]
+    m[KEOI] = f[KEOI] * exp(r[KEOI_isv])
+    m[KIS]  = f[KIS]
 
-    m[REST] = f[TOTG_PROP]  # * exp(r[])
-    m[RESI] = f[INSU_PROP]  # * exp(r[])
-    m[RESE] = f[EARLY_ERROR]  # * exp(r[])
-    m[KIS]  = f[KIS]  # * exp(r[])
+    m[REST] = f[TOTG_PROP]
+    m[RESI] = f[INSU_PROP]
+    m[RESH] = f[HOTG_PROP]
+    m[RESE] = f[EARLY_ERROR]
 
-    m[VG] = f[VG] * c[BW]/70 ##* exp(r[VG_isv]) 
-    m[VI] = f[VI] * c[BW]/70 ##* exp(r[VI_isv])
-    m[VP] = f[VP] ##* exp(r[VP_isv])
+    m[VG] = f[VG] * c[BW]/70 * exp(r[VG_isv])
+    m[VP] = f[VP] * exp(r[VP_isv])
+    m[VI] = f[VI] * c[BW]/70 * exp(r[VI_isv])
+    Q = f[Q] * exp(r[Q_isv])
 
     m[K15] = Q / m[VG]
     m[K51] = Q / m[VP]
@@ -243,17 +236,17 @@ MODEL_PARAMS: |
         m[F2] = 0
 
     if c[TYPE] == 2:
-        m[GSS] = BASG * f[BASG_FAC_pat] ## * exp(r[GSS_isv]*f[TOTG_PROP])
-        m[ISS] = BASI * f[BASI_FAC_pat] ##* exp(r[ISS_isv]*f[INSU_PROP])
-        
-        CLG = f[KG_pat] ##* exp(r[KG_isv])
-        CLGI = f[KGI_pat] / 1000 ##* exp(r[CLGI_pat_isv])
-        m[IFST] = f[IFST_pat] ##* exp(r[IFST_isv])
+        m[GSS] = BASG * f[BASG_FAC_pat] * exp(r[GSS_isv]*f[TOTG_PROP])
+        m[ISS] = BASI * f[BASI_FAC_pat] * exp(r[ISS_isv]*f[INSU_PROP])
+
+        CLG = f[KG_pat] * exp(r[KG_isv])
+        CLGI = f[KGI_pat] / 1000 * exp(r[CLGI_pat_isv])
+        m[IFST] = f[IFST_pat] * exp(r[IFST_isv])
         m[RESH] = f[RESH_pat]
         m[GPRI] = f[GPRI_pat] # * exp(r[KG_isv])
         m[GPRG] = f[GPRG_pat] # * exp(r[KG_isv])
         m[GELI] = f[GELI_pat]
-        
+
         if c[AMT] != 1:
             m[F1] = 1/10
         else:
@@ -268,7 +261,7 @@ MODEL_PARAMS: |
 
     elif c[TYPE] == 3:
         m[ISS] = c[INSU]
-        CLGI = f[CLGIclamp_pat] / 1000 ## * exp(r[CLGI1_isv])
+        CLGI = f[CLGIclamp_pat] / 1000 * exp(r[CLGI1_isv])
         if c[TIME] > 150:
             m[IINF] = c[BW]
 
@@ -278,64 +271,65 @@ MODEL_PARAMS: |
         m[F9] = 0
 
     elif c[TYPE] == 4:
-        CLGI = f[CLGIhvins_pat] / 1000 ## * exp(r[CLGI1_isv])
-        
+        CLGI = f[CLGIhvins_pat] / 1000 * exp(r[CLGI1_isv])
+
         if c[TIME] > 0:
             m[F2] = 1
         m[F3] = c[BW]
-            
+
     m[KG] = CLG/m[VG]
     m[KGI] = CLGI/m[VG]
     m[KI] = CLI/m[VI]
 
-    # GPRO= GSS*(KG+KGI*ISS)*VG             ;baseline glucose production
+    # baseline glucose production
     m[GPRO] = m[GSS]*(m[KG] + m[KGI]*m[ISS])*m[VG]
     m[IPRO] = m[KI]*m[ISS]*m[VI]
-    
+
     m[F4] = m[GSS]
     m[F5] = m[K15]*m[GSS]*m[VG]/m[K51]
     m[F6] = m[GSS]
     m[F7] = 0
     m[F8] = m[ISS]
-   
+
     m[ANOISE_var] = f[ANOISE_var]
-    
+
 # Optional section for setting initial values of s[X] variables
 # can also set slabel[X] text labels.
 STATES: |
     if c[TYPE] == 2:
         s[INS_S] = m[IFST]
-        
+    else:
+        s[INS_S] = 0.0
+
 # Define how the covariates and effects determine flows
 # between compartments.
 DERIVATIVES: |
-    # $DES         
+    # $DES
     # PK Model
     GIEL = (s[INS_E]/m[ISS]+0.0001)**m[GELI]
     GIPR = (s[INS_E]/m[ISS]+0.0001)**m[GPRI]
     GGPR = (s[TOT_E]/m[GSS]+0.0001)**m[GPRG]
-    GPRDG   = m[GPRO]*GIPR*GGPR  #              ;glucose production
+    GPRDG   = m[GPRO]*GIPR*GGPR  # glucose production
 
     d[TOT_C] += @bolus{name: "c1", amt: c[AMT]*m[F1]}
     d[TOT_C] += GPRDG
     d[TOT_C->PER_C] += m[K15]*s[TOT_C]
     d[TOT_C] -= m[KG]*s[TOT_C]
     d[TOT_C] -= m[KGI]*s[INS_E]*GIEL*s[TOT_C]
-    
+
     d[PER_C] += @bolus{name: "c5", amt: c[AMT]*m[F5]}
     d[PER_C->TOT_C] += m[K51]*s[PER_C]
-    
+
     IGPR = (s[PER_I]/m[GSS]+0.0001)**m[IPRG]  # glucose on insulin production
-    IPRDG   = m[IPRO]*IGPR  #                   ;insulin production
-    # IPRDG = 0
-    d[INS_C] += @bolus{name: "c2", amt: c[AMT]*m[F2]} 
-    d[INS_C] += @inf_rate{name: "c2_inf", amt: c[AMT]*m[F2], rate: c[RATE]} 
-    d[INS_C] += m[IINF] 
-    d[INS_C] += IPRDG 
+    IPRDG   = m[IPRO]*IGPR  # insulin production
+    d[INS_C] += @bolus{name: "c2", amt: c[AMT]*m[F2]}
+    d[INS_C] += @inf_rate{name: "c2_inf", amt: c[AMT]*m[F2], rate: c[RATE]}
+    d[INS_C] += IPRDG
+    d[INS_C] += m[IINF]
     d[INS_C] -= m[KI]*s[INS_C]
 
-    # d[INS_S] += @bolus{name: "c9", amt: c[AMT]*m[F9]}
-    d[INS_S->INS_C] += m[KIS]*s[INS_S] 
+    d[INS_S] += @bolus{name: "c9", amt: c[AMT]*m[F9]}
+    d[INS_S->INS_C] += m[KIS]*s[INS_S]
 
     d[HOT_C] += @bolus{name: "c3", amt: c[AMT]*m[F3]}
     d[HOT_C->PER_H] += m[K15]*s[HOT_C]
@@ -344,10 +338,10 @@ DERIVATIVES: |
 
     d[PER_H] += @bolus{name: "c7", amt: c[AMT]*m[F7]}
     d[PER_H->HOT_C] += m[K51]*s[PER_H]
-    
+
     # # PD model
     d[TOT_E] += @bolus{name: "c4", amt: c[AMT]*m[F4]}
-    d[TOT_E] += m[KEOG]*(s[TOT_C]/m[VG] - s[TOT_E]) 
+    d[TOT_E] += m[KEOG]*(s[TOT_C]/m[VG] - s[TOT_E])
 
     d[PER_I] += @bolus{name: "c6", amt: c[AMT]*m[F6]}
     d[PER_I] += m[K26]*(s[TOT_C]/m[VG] - s[PER_I])
@@ -371,12 +365,12 @@ PREDICTIONS: |
     else:
         p[DV] = 1
         W = 1
-        
+
     if c[TIME] <= 2:
         W *= m[RESE]
-        
+
     p[LDV] = log(p[DV] + 1e-6)
-    
+
     p[W] = W
     var = m[ANOISE_var]*W**2
     c[LDV] ~ norm(p[LDV], var)
@@ -413,107 +407,37 @@ FIT_METHODS:
         # Maximum number of iterations
         max_n_main_iterations: 0
 
-        CONVERGER:
-            OBJ_INC:
-                # If objective function in successive main iterations varies by less than this parameter then terminate main optimisation.
-                main_opt_atol: 1e-06
-
-                # Minimum number of iterations before allowing a declaration of
-                # convergence, zero is a null option here.
-                min_its: 0
-
-        # max number of fe iterations within one main iteration.
-        max_n_fe_iterations: 250
-
-        # If objective function in successive fe iterations varies by less than this parameter then terminate fe optimisation.
-        fe_opt_rtol: 1e-06
-
+        CONVERGER: {OBJ_INC: {}}
         # Option to use full laplacian to compute hessian in objective function term4, this is much slower than using the expectation of the outer product of the jacobian
         use_laplacian: False
 
         # Option to use chain rule when computing derivatives.
         use_chain: True
 
-        # f[X] step size used in fitting method.
-        delta_f: 0.001
-
-        # Option to use either leastsq or newton to optimise noise f[X] params.
-        fe_noise_opt_method: leastsq_dlik_dz
-
-        # Option to use either leastsq or nonmem to optimise f[X] associated with r[X]
-        fe_assoc_opt_method: grad_symb_linear
-
-        # Option to use either leastsq or newton optimiser to optimise f[X] NOT associated with r[X]
-        fe_unassoc_opt_method: leastsq
-
-        # Option to use either leastsq or sample var f[X] optimiser
-        fe_var_opt_method: sample_quick
-
-        # Optimiser for mean f[X] params.
-        fe_mean_opt_method: none
-
-        # Flag to switch on parallelisation for mean f[X] optimiser.
-        fe_mean_opt_para_flag: False
-
-        # Option to use either leastsq, leastsq_var, newton or leastsq_lmbda r[X] optimiser
-        re_opt_method: leastsq
-
-        # Max number of re iterations within one main iteration.
-        max_n_re_iterations: 500
-
-        # if objective function in successive re iterations varies by less than this parameter then terminate re optimisation.
-        re_opt_rtol: 1e-06
-
-        # Scale of step size when minimizing with L-M.
-        re_step_scale: 100.0
-
-        # r[X] step size used in fitting method.
-        delta_r: 1e-06
-
         # Option to use custom jacobian when optimising r[X] using L-M.
         use_lm_jac: True
 
-        # Option to use either lm/trf/dogbox in scipy leastsq to optimise r[X]
-        lm_method: lm
-
-        # Momentum to apply to f[X] optimisation
-        fe_momentum_rate: 0.0
-
-        # Parameter to control 50% point on parameter derived from
-        # current iteration, zero is a null value.
-        iteration_50_level: 1.0
-
-        # Inflate factor applied to var and noise parameters
-        # on each iteration, zero is null value.
-        inflate_factor: 0.5
-
         # Reset r[X]=0.0 before each r[X] optimisation
         reset_re_flag: True
-
-        # Perform an extra line search after assoc + noise f[X] opt
-        extra_line_search_flag: False
-
-        # Make the f[X] updates separately instead of in serial
-        separate_fe_update_flag: False
 
 COVARIANCE: {NO_COVARIANCE: {}}
 OUTPUT_SCRIPTS:
     GRPH:
         # Output options.
-        output_mode: create
+        output_mode: none
 
         # Graph types to plt
         grph_list: ['OBS_vs_TIME']
 
     TABLE:
         # Output options.
-        output_mode: create
+        output_mode: none
 
         tables_list: []
 
     SIM:
         # Output options.
-        output_mode: create
+        output_mode: run
 
         # Size of time step when creating smooth curve predictions
         # note setting this to a negative value, results in
@@ -535,4 +459,4 @@ OUTPUT_SCRIPTS:
 
     FITSUM:
         # Output options.
-        output_mode: create
+        output_mode: run
