@@ -1,0 +1,509 @@
+# The text below was generated automatically
+# PoPy version: 1.2.3
+# Date: 29 Feb 2024, 11:43:55
+# Code rev.: r8367-a9bae254951621ec3a3c18bb2a929df810603347
+---
+
+METHOD_OPTIONS:
+    # Python module required to process this script file
+    py_module: fit
+
+    # Option to set seed to make run result
+    # reproducible -e.g. when debugging.
+    rand_seed: 12345
+
+    # Format string for numerical output
+    float_format: default
+
+    # Compiler to use for temp functions
+    cython_compiler: msvc
+
+PARALLEL:
+    SINGLE:
+        # Length of progress bar on screen (default=0, off)
+        progress_bar_length: 0
+
+DESCRIPTION:
+    # Unique name used to distinguish script
+    name: my_pkpd_model
+
+    # A longer text string that could serve as a title
+    title: My PKPD model
+
+    # Author of the model
+    author: My Name
+
+    # Abstract paragraph describing model
+    abstract: |
+        Abstract describing the model
+
+    # Keywords list used to categorise models.
+    keywords: ['pkpd']
+
+FILE_PATHS:
+    # path to input comma separated value file in popy data format
+    input_data_file: Real_ADC_PK_Data.csv
+
+    # Delimiter character used in the data file.
+    input_data_delimiter: auto
+
+    # Output folder - results of computation stored here
+    output_folder: auto
+
+    # Temp folder - temporary files stored here
+    temp_folder: auto
+
+    # Log folder - log files stored here
+    log_folder: auto
+
+    # Output file extension - determines graphical output file format.
+    output_file_ext: ['svg']
+
+    # Option to delete any existing files before running.
+    delete_old_files_flag: False
+
+    # Solution containing f[X] values from a previous run.
+    input_solution_file: none
+
+    # Option to output iteration-by-iteration values.
+    output_iteration_results: True
+
+DATA_FIELDS:
+    # Field name in data file that contains row type info, e.g. obs/dose etc
+    type_field: POPY_TYPE
+
+    # Field name in data file that contains identity string for each data row e.g. obs/dose etc
+    id_field: ID
+
+    # Field name in data file that contains time or event for each data row
+    time_field: TIME
+
+# Code that preprocesses the input data.
+# Use this to filter rows and create derived covariates.
+PREPROCESS: |
+    del c[STUD]
+
+    if c[C].startswith("C"): return 
+    if c[TIME] > 28: return
+    # if int(c[ID]) != 12: return  # PT
+    
+    c[DOSE] = c[UGKG]
+    del c[UGKG]
+
+    if int(c[EVID]) == 4:
+        c[POPY_TYPE] = "reset+dose:c" + str(c[CMT3])
+    elif int(c[EVID]) == 0:
+        c[POPY_TYPE] = "obs"
+    elif int(c[EVID]) == 1:
+        c[POPY_TYPE] = "dose:c" + str(c[CMT3])
+
+EFFECTS:
+    # This is the root record
+    POP: |
+        # $THETA  
+        # (0.01,0.1) ; 1 KAB
+        f[KAB] ~ unif(0.01, inf) 0.1
+        
+        # (0.01,0.076) ; 2 K10
+        f[K10] ~ unif(0.01, inf) 0.076
+        
+        # (0.02,0.26) ; 3 K21
+        f[K21] ~ unif(0.02, inf) 0.26
+
+        # (0.03,0.3) ; 4 K32
+        f[K32] ~ unif(0.03, inf) 0.3
+
+        # (0.1,1.03) ; 5 VTT
+        f[VTT] ~ unif(0.1, inf) 1.03
+
+        # (2,16) ; 6   CL 30.0  (mL/day)
+        f[CL] ~ unif(2, inf) 16
+
+        # (10,100) ; 7   V1   (mL)
+        f[V1] ~ unif(10, inf) 100
+
+        # (10,100) ; 8   CLd2 (mL/day)
+        f[CLd2] ~ unif(10, inf) 100
+
+        # (7,70) ; 9    V2   (mL)
+        f[V2] ~ unif(7, inf) 70
+
+        # (2,20) ; 10   CLd3 (mL/day)
+        f[CLd3] ~ unif(2, inf) 20
+
+        # (10,100) ; 11    V3   (mL)
+        f[V3] ~ unif(10, inf) 100
+
+        # (0,0.201) ; 12 PROP ERR
+        f[PROP_ERR] ~ P 0.201
+
+        # $SIGMA  1  FIX
+    # This is the root record
+    ID: |
+        # $OMEGA  0  FIX  ;     1 KAB_
+        # 0  FIX  ;     2 K10_
+        # 0  FIX  ;     3 K21_
+        # 0  FIX  ;     4 K32_
+        # 0  FIX  ;     5 VTT_
+        # 0.04  ;       6 CL
+        f[CL_isv] ~ diag_matrix() [0.04]
+        r[CL_isv] ~ norm(0, f[CL_isv])
+        
+        # 0.04  ;       7 V1
+        f[V1_isv] ~ diag_matrix() [0.04]
+        r[V1_isv] ~ norm(0, f[V1_isv])
+
+        # 0  FIX  ;     8 CLd2
+        # 0.2  ;       9 V2
+        f[V2_isv] ~ diag_matrix() [0.2]
+        r[V2_isv] ~ norm(0, f[V2_isv])
+
+        # 0  FIX  ;    10 CLd3
+        # 0  FIX  ;      11 V3
+
+# Defines the mapping from c[X], f[X] and r[X] variables to individual model m[X] parameters.
+MODEL_PARAMS: |
+    # KAB=THETs[C1]*DEXP(ETs[C1]);
+    # K10=THETs[C2]*DEXP(ETs[C2]);
+    # K21=THETs[C3]*DEXP(ETs[C3]);
+    # K32=THETs[C4]*DEXP(ETs[C4]);
+    
+    m[KAB] = f[KAB]
+    m[K10] = f[K10]
+    m[K21] = f[K21]
+    m[K32] = f[K32]
+    
+    # VTT=THETs[C5]*DEXP(ETs[C5]);
+    m[VTT] = f[VTT]
+    
+    # CL=  THETs[C6]*DEXP(ETs[C6]);
+    m[CL] = f[CL]
+    
+    # V1=THETs[C7]*DEXP(ETs[C7]);
+    m[V1] = f[V1]
+
+    # CLd2=THETs[C8]*DEXP(ETs[C8]);
+    m[CLd2] = f[CLd2]
+
+    # V2= THETs[C9]*DEXP(ETs[C9]);
+    m[V2] = f[V2]
+
+    # CLd3=THETs[C10]*DEXP(ETs[C10]);
+    m[CLd3] = f[CLd3]
+
+    # V3= THETs[C11]*DEXP(ETs[C11]);
+    m[V3] = f[V3]
+
+    m[CL] *= exp(r[CL_isv])
+    m[V1] *= exp(r[V1_isv])
+    m[V2] *= exp(r[V2_isv])
+
+    # VSS=V1+V2+V3
+
+    if c[VITR] == 1:
+        # IF(VITR.EQ.1) THEN
+            # CL=0
+            # CLd2=0
+            # CLd3=0
+            # V1=VTT
+            # SCLC=1
+            # SCLV=1
+        # ENDIF
+        m[CL] = 0
+        m[CLd2] = 0
+        m[CLd3] = 0
+        m[V1] = m[VTT]
+    elif c[VITR] == 0:
+        # IF(VITR.EQ.0) THEN
+            # KAB=0
+        # ENDIF
+        m[KAB] = 0
+
+    # ;Dose in ug.................
+
+    # F1=WT*SEVE*DOSE/100
+    # F4=WT*SIX*DOSE/100
+    # F7=WT*FIVE*DOSE/100
+    # F10=WT*FOUR*DOSE/100
+    # F13=WT*THRE*DOSE/100
+    # F16=WT*TWO*DOSE/100
+    # F19=WT*ONE*DOSE/100
+    # F22=WT*ZERO*DOSE/100
+    w = c[WT] * c[DOSE] / 100
+    m[F1]  = w*c[SEVE]
+    m[F4]  = w*c[SIX]
+    m[F7]  = w*c[FIVE]
+    m[F10] = w*c[FOUR]
+    m[F13] = w*c[THRE]
+    m[F16] = w*c[TWO]
+    m[F19] = w*c[ONE]
+    m[F22] = w*c[ZERO]
+
+    m[PROP_ERR] = f[PROP_ERR]
+    
+    # ;Dose in pmol/kg.................
+
+    # ;F1=(SEVE*DOSE/100)*1000000/145167
+    
+# Optional section for setting initial values of s[X] variables
+# can also set slabel[X] text labels.
+STATES: |
+
+# Define how the covariates and effects determine flows
+# between compartments.
+DERIVATIVES: |
+    K1 = m[K32]
+    K4 = m[K32]
+    K7 = m[K32]
+    K10 = m[K32]
+    K13 = m[K32]
+    K16 = m[K21]
+    K19 = m[K10]
+
+    # Here we make heavy use of PoPy's parameterized compartment/flow
+    # definitions to reduce duplication of code.
+    # Some extra care is required to get the indices right, but
+    # this is balanced by the extra care needed to copy, paste and modify
+    # many lines in the expanded version.
+
+    # Dosing
+    d[C{i:1..22;3}] = @bolus{name: "c{i}", amt: c[AMT]*m[F{i}]}
+    
+    # Intercompartmental transfers
+    d[C{i:1..19;3}->C{i+3}] += K{i}*s[C{i}] 
+    d[C{i:1..22;3}->C{i+1}] += m[CLd2] * s[C{i}] / m[V1]
+    d[C{i:1..22;3}->C{i+2}] += m[CLd3] * s[C{i}] / m[V1]
+    d[C{i:2..23;3}->C{i-1}] += m[CLd2] * s[C{i}] / m[V2]
+    d[C{i:3..24;3}->C{i-2}] += m[CLd3] * s[C{i}] / m[V3]
+
+    # Elimination
+    d[C{i:1..22;3}] -= m[KAB] * s[C{i}]
+    d[C{i:1..22;3}] -= m[CL] * s[C{i}] / m[V1]
+
+# Define the final predicted m[X] variables to be output
+# by the compartment model system.
+PREDICTIONS: |
+    # S1=V1
+    # S4=V1
+    # S7=V1
+    # S10=V1
+    # S13=V1
+    # S16=V1
+    # S19=V1
+    # S22=V1
+
+    # TAB=(A(1)+A(4)+A(7)+A(10)+A(13)+A(16)+A(19)+A(22))/V1
+    TAB = s[C1] + s[C4] + s[C7] + s[C10] + s[C13] + s[C16] + s[C19] + s[C22]
+    TAB /= m[V1]
+    # TDM1=(A(1)+A(4)+A(7)+A(10)+A(13)+A(16)+A(19))/V1
+    # TDM2=(A(1)+A(4)+A(7)+A(10)+A(13)+A(16))/V1
+
+    # DM1T= (A(1)*7+A(4)*6+A(7)*5+A(10)*4+A(13)*3+A(16)*2+A(19)*1+A(22)*0)
+    # DAR= DM1T/(A(1)+A(4)+A(7)+A(10)+A(13)+A(16)+A(19)+A(22))
+
+    cmt = c[CMT3]
+    if cmt == 1:
+        p[DV] = s[C1] / m[V1]
+    elif cmt == 4:
+        p[DV] = s[C4] / m[V1]
+    elif cmt == 7:
+        p[DV] = s[C7] / m[V1]
+    elif cmt == 10:
+        p[DV] = s[C10] / m[V1]
+    elif cmt == 13:
+        p[DV] = s[C13] / m[V1]
+    elif cmt == 16:
+        p[DV] = s[C16] / m[V1]
+    elif cmt == 19:
+        p[DV] = s[C19] / m[V1]
+    elif cmt == 22:
+        p[DV] = s[C22] / m[V1]
+        
+    # IPRE=LOG(F + 0.000001);
+    p[LDV] = log(p[DV] + 0.000001)
+
+    # IF (TYPE.EQ.1) IPRE=LOG(TAB)
+    if c[TYPE] == 1:
+        p[LDV] = log(TAB)
+    # ; IF (TYPE.EQ.2) IPRE=LOG(TDM2)
+
+    # W=THETA(12)
+    W = m[PROP_ERR]
+    # IF(W.EQ.0) W=1
+    if W == 0:
+        W = 1
+        
+    # IRES=DV-IPRE;
+    # IWRES=IRES/W;
+
+    # Y=IPRE + W*EPS(1); proportional error
+    var = W**2
+    c[LDV] ~ norm(p[LDV], var)
+
+    # ICL= CL/WT;
+    # IV1= V1/WT;
+    # ICLd2= CLd2/WT;
+    # IV2= V2/WT;
+    # ICLd3= CLd3/WT;
+    # IV3= V3/WT;
+
+    # p[DV_CENTRAL] = s[CENTRAL]/m[V1]
+    # plabel[DV_CENTRAL] = 'Drug conc. (units)'
+    # var = m[ANOISE]**2 + m[PNOISE]**2 * p[DV_CENTRAL]**2
+    # c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+
+ODE_SOLVER:
+    CPPLSODA:
+        # Absolute tolerance of ode solver.
+        atol: 1e-06
+
+        # Relative tolerance of ode solver.
+        rtol: 1e-06
+
+        # Maximum number of steps allowed in ode solver.
+        max_nsteps: 10000000
+
+        # Option to combine sections into supersections, which can make PoPy run faster, however with discontinuous ODE params you may need to turn this off (closer to nonmem approach).
+        use_supersections: True
+
+        # Option to use sensitivity equations in ode solver.
+        use_sens: True
+
+        # Minimum step size of ode solver.
+        hmin: 0.0
+
+FIT_METHODS:
+    - JOE:
+        ODE_SOLVER: {INHERIT: {}}
+        # Option to output timing info.
+        output_timing_flag: False
+
+        # Option to output warning detail.
+        output_warning_detail_flag: True
+
+        # Maximum number of iterations
+        max_n_main_iterations: 100
+
+        CONVERGER:
+            OBJ_INC:
+                # If objective function in successive main iterations varies by less than this parameter then terminate main optimisation.
+                main_opt_atol: 1e-06
+
+                # Minimum number of iterations before allowing a declaration of
+                # convergence, zero is a null option here.
+                min_its: 0
+
+        # max number of fe iterations within one main iteration.
+        max_n_fe_iterations: 250
+
+        # If objective function in successive fe iterations varies by less than this parameter then terminate fe optimisation.
+        fe_opt_rtol: 1e-06
+
+        # Option to use full laplacian to compute hessian in objective function term4, this is much slower than using the expectation of the outer product of the jacobian
+        use_laplacian: False
+
+        # Option to use chain rule when computing derivatives.
+        use_chain: True
+
+        # f[X] step size used in fitting method.
+        delta_f: 0.001
+
+        # Option to use either leastsq or newton to optimise noise f[X] params.
+        fe_noise_opt_method: leastsq_dlik_dz
+
+        # Option to use either leastsq or nonmem to optimise f[X] associated with r[X]
+        fe_assoc_opt_method: grad_symb_linear
+
+        # Option to use either leastsq or newton optimiser to optimise f[X] NOT associated with r[X]
+        fe_unassoc_opt_method: leastsq
+
+        # Option to use either leastsq or sample var f[X] optimiser
+        fe_var_opt_method: sample_quick
+
+        # Optimiser for mean f[X] params.
+        fe_mean_opt_method: none
+
+        # Flag to switch on parallelisation for mean f[X] optimiser.
+        fe_mean_opt_para_flag: False
+
+        # Option to use either leastsq, leastsq_var, newton or leastsq_lmbda r[X] optimiser
+        re_opt_method: leastsq
+
+        # Max number of re iterations within one main iteration.
+        max_n_re_iterations: 500
+
+        # if objective function in successive re iterations varies by less than this parameter then terminate re optimisation.
+        re_opt_rtol: 1e-06
+
+        # Scale of step size when minimizing with L-M.
+        re_step_scale: 100.0
+
+        # r[X] step size used in fitting method.
+        delta_r: 1e-06
+
+        # Option to use custom jacobian when optimising r[X] using L-M.
+        use_lm_jac: True
+
+        # Option to use either lm/trf/dogbox in scipy leastsq to optimise r[X]
+        lm_method: lm
+
+        # Momentum to apply to f[X] optimisation
+        fe_momentum_rate: 0.0
+
+        # Parameter to control 50% point on parameter derived from
+        # current iteration, zero is a null value.
+        iteration_50_level: 1.0
+
+        # Inflate factor applied to var and noise parameters
+        # on each iteration, zero is null value.
+        inflate_factor: 0.5
+
+        # Reset r[X]=0.0 before each r[X] optimisation
+        reset_re_flag: True
+
+        # Perform an extra line search after assoc + noise f[X] opt
+        extra_line_search_flag: False
+
+        # Make the f[X] updates separately instead of in serial
+        separate_fe_update_flag: False
+
+COVARIANCE: {NO_COVARIANCE: {}}
+OUTPUT_SCRIPTS:
+    GRPH:
+        # Output options.
+        output_mode: none
+
+        # Graph types to plt
+        grph_list: ['OBS_vs_TIME']
+
+    TABLE:
+        # Output options.
+        output_mode: none
+
+        tables_list: []
+
+    SIM:
+        # Output options.
+        output_mode: none
+
+        # Size of time step when creating smooth curve predictions
+        # note setting this to a negative value, results in
+        # simulated predictions for each individual
+        # ONLY at time points in the original data set.
+        sim_time_step: 1.0
+
+        # Graph types to plt
+        grph_list: ['OBS_vs_TIME']
+
+        tables_list: []
+
+    MSIM:
+        # Output options.
+        output_mode: none
+
+        # List of vpc types to generate in popy_vpc script.
+        vpc_list: ['OBS_vs_TIME_VPC']
+
+    FITSUM:
+        # Output options.
+        output_mode: none
