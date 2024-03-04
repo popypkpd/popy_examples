@@ -1,0 +1,230 @@
+# The text below was generated automatically
+# PoPy version: 1.2.3
+# Date: 04 Mar 2024, 09:18:22
+# Code rev.: r8368-66614acff0e518fbf8bd56e5054475869c379be8
+---
+
+METHOD_OPTIONS:
+    # Python module required to process this script file
+    py_module: fit
+
+    # Option to set seed to make run result
+    # reproducible -e.g. when debugging.
+    rand_seed: 12345
+
+    # Format string for numerical output
+    float_format: default
+
+PARALLEL:
+    SINGLE:
+        # Length of progress bar on screen (default=0, off)
+        progress_bar_length: 0
+
+DESCRIPTION:
+    # Unique name used to distinguish script
+    name: my_pkpd_model
+
+    # A longer text string that could serve as a title
+    title: My PKPD model
+
+    # Author of the model
+    author: My Name
+
+    # Abstract paragraph describing model
+    abstract: |
+        Abstract describing the model
+
+    # Keywords list used to categorise models.
+    keywords: ['pkpd']
+
+FILE_PATHS:
+    # path to input comma separated value file in popy data format
+    input_data_file: Simulated_JHQG_S273_S188_OverallSurvival.csv
+    
+    # Delimiter character used in the data file.
+    input_data_delimiter: auto
+
+    # Output folder - results of computation stored here
+    output_folder: auto
+
+    # Temp folder - temporary files stored here
+    temp_folder: auto
+
+    # Log folder - log files stored here
+    log_folder: auto
+
+    # Output file extension - determines graphical output file format.
+    output_file_ext: ['svg']
+
+    # Option to delete any existing files before running.
+    delete_old_files_flag: False
+
+    # Solution containing f[X] values from a previous run.
+    input_solution_file: none
+
+    # Option to output iteration-by-iteration values.
+    output_iteration_results: True
+
+DATA_FIELDS:
+    # Field name in data file that contains row type info, e.g. obs/dose etc
+    type_field: TYPE
+
+    # Field name in data file that contains identity string for each data row e.g. obs/dose etc
+    id_field: ID
+
+    # Field name in data file that contains time or event for each data row
+    time_field: TIME
+
+# Code that preprocesses the input data.
+# Use this to filter rows and create derived covariates.
+PREPROCESS: |
+    # CCOM,ID,TIME,DV,EVID,CTS8,BASE,ECOG,CENS
+
+    if int(c[EVID]) == 0:
+        c[TYPE] = "obs"
+    elif int(c[EVID]) == 1:
+        c[TYPE] = "dose"
+    elif int(c[EVID]) == 3:
+        c[TYPE] = "reset"
+    elif int(c[EVID]) == 4:
+        c[TYPE] = "reset+dose"
+
+EFFECTS:
+    # This is the root record
+    POP: |
+        f[BASE] ~ unif(0, inf) 0.15
+        f[SHP] ~ U 0.0001
+        f[BET1] ~ U 0.0001
+        f[BET2] ~ U 0.0001
+        f[BET3] ~ U 0.0001
+        
+    # This is the root record
+    ID: |
+        # r[KA, CL, V1, Q, V2] ~ mnorm([0,0,0,0,0], f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv])
+
+# Defines the mapping from c[X], f[X] and r[X] variables to individual model m[X] parameters.
+MODEL_PARAMS: |
+    m[LAM] = f[BASE] # *exp(BASE_isv])
+    m[SHP] = f[SHP]
+    m[BET1] = f[BET1]
+    m[BET2] = f[BET2]
+    m[BET3] = f[BET3]
+    
+# Optional section for setting initial values of s[X] variables
+# can also set slabel[X] text labels.
+STATES: |
+
+# Define how the covariates and effects determine flows
+# between compartments.
+DERIVATIVES: |
+    d[CENTRAL] = m[LAM]*m[SHP]*(x[TIME]+0.00001)**(m[SHP]-1) 
+    d[CENTRAL] *= EXP(m[BET1]*c[CTS8]+m[BET2]*c[BASE]+m[BET3]*c[ECOG])
+
+# Define the final predicted m[X] variables to be output
+# by the compartment model system.
+PREDICTIONS: |
+        # CHZ = A(1)-OLDCHZ
+        CHZ = s[CENTRAL] - w[OLDCHZ]
+
+        # OLDCHZ = A(1)
+        w[OLDCHZ] = s[CENTRAL]
+
+        SUR = EXP(-CHZ)
+        
+        HAZNOW = m[LAM]*m[SHP]*(c[TIME]+0.00001)**(m[SHP]-1)
+        HAZNOW *= EXP(m[BET1]*c[CTS8]+m[BET2]*c[BASE]+m[BET3]*c[ECOG])
+
+        # IF(DV.EQ.0) Y = SUR
+        # IF(DV.NE.0) Y = SUR*HAZNOW
+        if c[CENS] == 1:
+            p[Y] = SUR
+        else:
+            p[Y] = SUR * HAZNOW
+
+        c[DV] ~ custom(-2.0*log(p[Y]))
+
+ODE_SOLVER:
+    CPPLSODA:
+        # Absolute tolerance of ode solver.
+        atol: 1e-06
+
+        # Relative tolerance of ode solver.
+        rtol: 1e-06
+
+        # Maximum number of steps allowed in ode solver.
+        max_nsteps: 10000000
+
+        # Option to combine sections into supersections, which can make PoPy run faster, however with discontinuous ODE params you may need to turn this off (closer to nonmem approach).
+        use_supersections: True
+
+        # Option to use sensitivity equations in ode solver.
+        use_sens: True
+
+        # Minimum step size of ode solver.
+        hmin: 0.0
+
+FIT_METHODS:
+    - JOE:
+        ODE_SOLVER: {INHERIT: {}}
+        # Option to output timing info.
+        output_timing_flag: False
+
+        # Option to output warning detail.
+        output_warning_detail_flag: True
+
+        # Maximum number of iterations
+        max_n_main_iterations: 30
+
+        CONVERGER: {OBJ_INC: {}}
+        # Option to use full laplacian to compute hessian in objective function term4, this is much slower than using the expectation of the outer product of the jacobian
+        use_laplacian: False
+
+        # Option to use chain rule when computing derivatives.
+        use_chain: True
+
+        # Option to use custom jacobian when optimising r[X] using L-M.
+        use_lm_jac: True
+
+        # Reset r[X]=0.0 before each r[X] optimisation
+        reset_re_flag: True
+
+COVARIANCE: {NO_COVARIANCE: {}}
+OUTPUT_SCRIPTS:
+    GRPH:
+        # Output options.
+        output_mode: none
+
+        # Graph types to plt
+        grph_list: ['OBS_vs_TIME']
+
+    TABLE:
+        # Output options.
+        output_mode: none
+
+        tables_list: []
+
+    SIM:
+        # Output options.
+        output_mode: run
+
+        # Size of time step when creating smooth curve predictions
+        # note setting this to a negative value, results in
+        # simulated predictions for each individual
+        # ONLY at time points in the original data set.
+        sim_time_step: 1.0
+
+        # Graph types to plt
+        grph_list: ['OBS_vs_TIME']
+
+        tables_list: []
+
+    MSIM:
+        # Output options.
+        output_mode: create
+
+        # List of vpc types to generate in popy_vpc script.
+        vpc_list: ['OBS_vs_TIME_VPC']
+
+    FITSUM:
+        # Output options.
+        output_mode: run
