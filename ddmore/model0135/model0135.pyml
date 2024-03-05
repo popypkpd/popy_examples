@@ -35,7 +35,7 @@ DESCRIPTION:
         Abstract describing the model
 
     # Keywords list used to categorise models.
-    keywords: ['pkpd']
+    keywords: ['pkpd', "hazard model", "survival model"]
 
 FILE_PATHS:
     # path to input comma separated value file in popy data format
