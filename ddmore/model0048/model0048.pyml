@@ -1,0 +1,266 @@
+# The text below was generated automatically
+# PoPy version: 1.2.3
+# Date: 04 Mar 2024, 13:19:45
+# Code rev.: r-academic
+---
+
+METHOD_OPTIONS:
+    # Python module required to process this script file
+    py_module: fit
+
+    # Option to set seed to make run result
+    # reproducible -e.g. when debugging.
+    rand_seed: 12345
+
+    # Format string for numerical output
+    float_format: default
+
+PARALLEL:
+    SINGLE:
+        # Length of progress bar on screen (default=0, off)
+        progress_bar_length: 0
+
+DESCRIPTION:
+    # Unique name used to distinguish script
+    name: my_pkpd_model
+
+    # A longer text string that could serve as a title
+    title: My PKPD model
+
+    # Author of the model
+    author: My Name
+
+    # Abstract paragraph describing model
+    abstract: |
+        Abstract describing the model
+
+    # Keywords list used to categorise models.
+    keywords: ['pkpd']
+
+FILE_PATHS:
+    # path to input comma separated value file in popy data format
+    input_data_file: Simulated_Survival_GIST.csv
+
+    # Delimiter character used in the data file.
+    input_data_delimiter: auto
+
+    # Output folder - results of computation stored here
+    output_folder: auto
+
+    # Temp folder - temporary files stored here
+    temp_folder: auto
+
+    # Log folder - log files stored here
+    log_folder: auto
+
+    # Output file extension - determines graphical output file format.
+    output_file_ext: ['svg']
+
+    # Option to delete any existing files before running.
+    delete_old_files_flag: False
+
+    # Solution containing f[X] values from a previous run.
+    input_solution_file: none
+
+    # Option to output iteration-by-iteration values.
+    output_iteration_results: True
+
+DATA_FIELDS:
+    # Field name in data file that contains row type info, e.g. obs/dose etc
+    type_field: TYPE
+
+    # Field name in data file that contains identity string for each data row e.g. obs/dose etc
+    id_field: ID
+
+    # Field name in data file that contains time or event for each data row
+    time_field: TIME
+
+# Code that preprocesses the input data.
+# Use this to filter rows and create derived covariates.
+PREPROCESS: |
+    nonmem2popy()
+
+EFFECTS:
+    # This is the root record
+    POP: |
+        f[LAMBH] ~ unif(0, inf) 0.00596
+        f[ALPHH] ~ unif(0, inf) 1.226
+        f[sVEGFR3_HAZ] = -3.77
+        f[TBAS_HAZ] = -0.002371 
+        f[LAMBD] ~ unif(0, inf) 0.00196
+        f[ALPHD] ~ unif(0, inf) 1.273
+
+    # This is the root record
+    ID: |
+        # r[KA, CL, V1, Q, V2] ~ mnorm([0,0,0,0,0], f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv])
+
+# Defines the mapping from c[X], f[X] and r[X] variables to individual model m[X] parameters.
+MODEL_PARAMS: |
+    m[BM03] =   c[BAS3]  #               ; model predicted parameters for VEGFR3 timecourse
+    m[IMAX1] = 1
+    m[IC503] = c[EC53]*24*7  #            ; scale EC50 on AUC from .hour to .week
+    m[MRT33] = c[MRT3]/24/7  #          ; scale from hour to week
+    m[KOUT3] = 1/m[MRT33]
+
+    m[AUC] = (c[DOS]/c[CL])*24*7  #                ; scale from .hour to .week
+
+    m[LAMBH] = f[LAMBH]  # * exp(r[LAMBH_isv])  # Scale parameter in the Weibull probability density function for the survival model (the ETA is a placeholder here)
+    m[ALPHH] = f[ALPHH]  #             ; Shape parameter in the Weibull probability density function for the survival model
+    m[LAMBD] = f[LAMBD]  #             ; Scale parameter in the Weibull probability density function for the drop out model
+    m[ALPHD] = f[ALPHD]  #              ; Shape parameter in the Weibull probability density function for the drop out model
+
+    m[sVEGFR3_HAZ] = f[sVEGFR3_HAZ]
+    m[TBAS_HAZ] = f[TBAS_HAZ]
+    
+# Optional section for setting initial values of s[X] variables
+# can also set slabel[X] text labels.
+STATES: |
+    s[C1] = m[BM03]
+    
+# Define how the covariates and effects determine flows
+# between compartments.
+DERIVATIVES: |
+    EFF3 = m[IMAX1]*m[AUC]/(m[IC503]+m[AUC])  # ; inhibitory Emax drug effect on VEGFR3
+    KIN3 = m[BM03]*m[KOUT3]
+
+    d[C1] = KIN3*(1-EFF3)-m[KOUT3]*s[C1]  #   ; VEGFR3 timecourse
+
+    BM3 = (s[C1]-m[BM03])/m[BM03]  #          ; relative change in VEGFR3 from baseline
+    DEL = 1E-6
+
+    # ; patients who died before the first follow-up (week 4) are not included in the study
+    if x[TIME] > 4:
+        # ;-----Weibull model for survival-------
+        d[C2] = m[LAMBH]*m[ALPHH]*(x[TIME]+DEL)**(m[ALPHH]-1)
+        d[C2] *= EXP(-m[sVEGFR3_HAZ]*BM3+(-m[TBAS_HAZ])*c[TBAS])
+        
+        # ;-----Weibull model for dropout
+        d[C3] = m[LAMBD]*m[ALPHD]*(x[TIME]+DEL)**(m[ALPHD]-1)
+
+# Define the final predicted m[X] variables to be output
+# by the compartment model system.
+PREDICTIONS: |
+    BBM3 = (s[C1]-m[BM03])/m[BM03]  #          ; relative change in VEGFR3 from baseline
+
+    # ;-----TTD (Time to death)--------------
+    # CHZ     =   A(2)           ; cumulative hazard for survival
+    # DCHZ    =   A(3)           ; cumulative hazard for drop out
+    CHZ = s[C2]
+    DCHZ = s[C3]
+
+    SUR     =   EXP(-CHZ) #     ; survival probability
+    SURD    =   EXP(-DCHZ)  #   ; drop out probability
+    DELX    =   1E-6
+    
+    if x[TIME] > 4:
+        HAZNOW = m[LAMBH]*m[ALPHH]*(c[TIME]+DELX)**(m[ALPHH]-1)
+        HAZNOW *= EXP(-m[sVEGFR3_HAZ]*BBM3+(-m[TBAS_HAZ])*c[TBAS])
+        
+        HAZDNOW = m[LAMBD]*m[ALPHD]*(c[TIME]+DELX)**(m[ALPHD]-1)
+    else:
+        HAZNOW = 0
+        HAZDNOW = 0
+
+    if c[EVID] == 0:
+        if c[CENS] == 0:
+            p[IPRED] = SUR
+        elif c[CENS] == 1:
+            p[IPRED] = SUR*HAZNOW
+    
+    if c[FLAG] == 10:
+        if c[CENS] == 0:
+            p[IPRED] = SURD*HAZDNOW
+        elif c[CENS] == 1:
+            p[IPRED] = SURD
+
+    c[DV] ~ custom(-2.0*log(p[IPRED]+1e-9))
+
+ODE_SOLVER:
+    CPPLSODA:
+        # Absolute tolerance of ode solver.
+        atol: 1e-06
+
+        # Relative tolerance of ode solver.
+        rtol: 1e-06
+
+        # Maximum number of steps allowed in ode solver.
+        max_nsteps: 10000000
+
+        # Option to combine sections into supersections, which can make PoPy run faster, however with discontinuous ODE params you may need to turn this off (closer to nonmem approach).
+        use_supersections: True
+
+        # Option to use sensitivity equations in ode solver.
+        use_sens: True
+
+        # Minimum step size of ode solver.
+        hmin: 0.0
+
+FIT_METHODS:
+    - ND:
+        ODE_SOLVER: {INHERIT: {}}
+        # Option to output timing info.
+        output_timing_flag: False
+
+        # Option to output warning detail.
+        output_warning_detail_flag: True
+
+        # Maximum number of iterations
+        max_n_main_iterations: 0
+
+        CONVERGER: {OBJ_INC: {}}
+        
+        # Option to use full laplacian to compute hessian in objective function term4, this is much slower than using the expectation of the outer product of the jacobian
+        use_laplacian: True
+
+        # Option to use chain rule when computing derivatives.
+        use_chain: True
+
+        # Option to use custom jacobian when optimising r[X] using L-M.
+        use_lm_jac: True
+
+        # Reset r[X]=0.0 before each r[X] optimisation
+        reset_re_flag: True
+
+COVARIANCE: {NO_COVARIANCE: {}}
+OUTPUT_SCRIPTS:
+    GRPH:
+        # Output options.
+        output_mode: none
+
+        # Graph types to plt
+        grph_list: ['OBS_vs_TIME']
+
+    TABLE:
+        # Output options.
+        output_mode: none
+
+        tables_list: []
+
+    SIM:
+        # Output options.
+        # output_mode: run
+        output_mode: none
+
+        # Size of time step when creating smooth curve predictions
+        # note setting this to a negative value, results in
+        # simulated predictions for each individual
+        # ONLY at time points in the original data set.
+        sim_time_step: 1.0
+
+        # Graph types to plt
+        grph_list: ['OBS_vs_TIME']
+
+        tables_list: []
+
+    MSIM:
+        # Output options.
+        # output_mode: create
+        output_mode: none
+
+        # List of vpc types to generate in popy_vpc script.
+        vpc_list: ['OBS_vs_TIME_VPC']
+
+    FITSUM:
+        # Output options.
+        # output_mode: run
+        output_mode: none
