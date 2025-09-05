@@ -1,0 +1,71 @@
+METHOD_OPTIONS: {py_module: tut, rand_seed: 12345}
+GEN_EFFECTS:
+    POP: |
+        c[AMT] = 100.0
+        f[KA] = 0.2
+        f[CL] = 2.0
+        f[V1] = 50
+        f[Q] = 1.0
+        f[V2] = 80
+        f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv] = [
+            [0.1],
+            [0.01, 0.03],
+            [0.01, -0.01, 0.09],
+            [0.01, 0.02, 0.01, 0.07],
+            [0.01, 0.02, 0.01, 0.01, 0.05],
+        ]
+        f[PNOISE] = 0.15
+    ID: |
+        c[ID] = sequential(50)
+        t[DOSE] = 2.0
+        t[OBS] ~ unif(1.0, 50.0; 5)
+        # t[OBS] = range(1.0, 50.0; 5)
+        r[KA, CL, V1, Q, V2] ~ mnorm([0,0,0,0,0], f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv])
+FIT_EFFECTS:
+    POP: |
+        f[KA] ~ P1.0
+        f[CL] ~ P1.0
+        f[V1] ~ P20
+        f[Q] ~ P0.5
+        f[V2] ~ P100
+        f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv] ~ spd_matrix() [
+            [0.05],
+            [0.01, 0.05],
+            [0.01, 0.01, 0.05],
+            [0.01, 0.01, 0.01, 0.05],
+            [0.01, 0.01, 0.01, 0.01, 0.05],
+        ]
+        f[PNOISE] ~ P0.1
+    ID: |
+        r[KA, CL, V1, Q, V2] ~ mnorm([0,0,0,0,0], f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv])
+MODEL_PARAMS: |
+    m[KA] = f[KA] * exp(r[KA])
+    m[CL] = f[CL] * exp(r[CL])
+    m[V1] = f[V1] * exp(r[V1])
+    m[Q] = f[Q] * exp(r[Q])
+    m[V2] = f[V2] * exp(r[V2])
+    m[ANOISE] = 0.001
+    m[PNOISE] = f[PNOISE]
+DERIVATIVES: |
+    # s[DEPOT,CENTRAL,PERI] = @dep_two_cmp_cl{dose:@bolus{amt: c[AMT]}}
+    d[DEPOT] = @bolus{amt: c[AMT]} - m[KA]*s[DEPOT]
+    d[CENTRAL] = m[KA]*s[DEPOT] - s[CENTRAL]*m[CL]/m[V1] - s[CENTRAL]*m[Q]/m[V1]  + s[PERI]*m[Q]/m[V2]
+    d[PERI] = s[CENTRAL]*m[Q]/m[V1] - s[PERI]*m[Q]/m[V2]
+PREDICTIONS: |
+    p[DV_CENTRAL] = s[CENTRAL]/m[V1]
+    plabel[DV_CENTRAL] = 'Drug conc. (units)'
+    var = m[ANOISE]**2 + m[PNOISE]**2 * p[DV_CENTRAL]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+ODE_SOLVER:
+    CPPLSODA:
+        atol: 1e-09
+        rtol: 1e-09
+        use_supersections: True
+        use_sens: True
+        hmin: 0.0
+FIT_METHODS: [ND: {max_n_main_iterations: 30}]
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: none}
+    TUTSUM: {output_mode: none}
