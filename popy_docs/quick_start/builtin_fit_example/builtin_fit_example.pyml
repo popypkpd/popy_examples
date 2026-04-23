@@ -163,7 +163,7 @@ OUTPUT_SCRIPTS:
 
     MSIM:
         # Output options.
-        output_mode: create
+        output_mode: run
 
     FITSUM:
         # Output options.
