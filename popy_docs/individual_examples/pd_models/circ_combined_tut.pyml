@@ -73,7 +73,14 @@ STATES: |
     # approx_av_exp_sin += exp(m[AMP3]) + exp(-m[AMP3])
     # approx_av_exp_sin += exp(m[AMP4]) + exp(-m[AMP4])
     # approx_av_exp_sin *= 0.5
-    max_amp = max(m[AMP1], m[AMP2], m[AMP3]) #, m[AMP4])
+    if   m[AMP1] >= m[AMP2] and m[AMP1] >= m[AMP3]:
+        max_amp = m[AMP1]
+    elif m[AMP2] >= m[AMP3] and m[AMP2] >= m[AMP1]:
+        max_amp = m[AMP2]
+    elif m[AMP3] >= m[AMP1] and m[AMP3] >= m[AMP2]:
+        max_amp = m[AMP3]
+            
+    # max_amp = max(m[AMP1], m[AMP2], m[AMP3]) #, m[AMP4])
     approx_av_exp_sin = (exp(max_amp) + exp(-max_amp)) * 0.5
     s[MARKER] = approx_av_exp_sin/m[KOUT]
     # s[MARKER] = 0.0 # PD
