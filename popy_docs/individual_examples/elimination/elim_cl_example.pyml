@@ -10,22 +10,27 @@ FILE_PATHS: {output_file_ext: ['svg', 'pdf']}
 GEN_EFFECTS:
     POP: |
         c[ID] = 1
-        c[AMT] = 100.0
-        t[OBS] = range(1, 40; 20)
         c[CL] = 2
         c[V] = 20
+
+        c[AMT] = 100.0
+        t[DOSE] = 1.0
+        t[OBS] = range(1, 40; 20)
 FIT_EFFECTS:
     POP: |
 MODEL_PARAMS: |
+DERIVATIVES: |
+    d[CENTRAL_AMT] = @bolus{amt: c[AMT]} - c[CL]/c[V]*s[CENTRAL_AMT]
 PREDICTIONS: |
-    plabel[DRUG_CONC] = "Drug Concentration (mg/L)"
+    p[CENTRAL_CONC] = s[CENTRAL_AMT]/c[V]
+    plabel[CENTRAL_CONC] = "Drug Concentration (mg/L)"
     clabel[TIME] = "Time (minutes)"
-    AMOUNT = c[AMT]*exp(-(c[CL]/c[V])*(c[TIME]-1.0))
-    p[DRUG_CONC] = AMOUNT/c[V]
-    c[DRUG_CONC] ~ norm(p[DRUG_CONC], 0.0)
+    c[CENTRAL_CONC] ~ norm(p[CENTRAL_CONC], 0.0)
+ODE_SOLVER:
+    CPPLSODA: {}
 FIT_METHODS: [ND: {}]
 OUTPUT_SCRIPTS:
     GEN: {output_mode: run, sim_time_step: 1.0}
-    FIT: {output_mode: run, sim_time_step: 1.0}
-    COMP: {output_mode: run}
-    TUTSUM: {output_mode: run}
+    FIT: {output_mode: none, sim_time_step: 1.0}
+    COMP: {output_mode: none}
+    TUTSUM: {output_mode: none}
