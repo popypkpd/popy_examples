@@ -1,0 +1,12 @@
+METHOD_OPTIONS: {py_module: gen, rand_seed: 12345}
+
+EFFECTS:
+    POP: |
+    ID: |
+        c[ID] = sequential(10)
+        c[RANDSEED] ~ unifint(1,1000000)
+        t[OBS] = [0]  # at least one time point must be defined
+        
+POSTPROCESS: |
+    c[ID] = f"pop{int(c[ID])-1:04}"  # reformat the ID field
+    del c[orig_data_row]

@@ -1,0 +1,106 @@
+METHOD_OPTIONS: { py_module: tut, rand_seed: "${RANDSEED}" }
+PARALLEL: {SINGLE: {progress_bar_length: 0}}
+DESCRIPTION:
+    name: my_pkpd_model
+    title: My PKPD model
+    author: My Name
+    abstract: |
+        Abstract describing the model
+    keywords: ['pkpd']
+FILE_PATHS:
+    output_folder: auto
+    temp_folder: ./_temp
+    log_folder: auto
+    output_file_ext: ['svg']
+    delete_old_files_flag: False
+    output_iteration_results: True
+DATA_FIELDS: {type_field: TYPE, id_field: ID, time_field: TIME}
+GEN_EFFECTS:
+    POP: |
+        c[AMT] = 100.0
+        f[KA] = 0.2
+        f[CL] = 2.0
+        f[V1] = 50
+        f[Q] = 1.0
+        f[V2] = 80
+        f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv] = [
+            [0.1],
+            [0.01, 0.03],
+            [0.01, -0.01, 0.09],
+            [0.01, 0.02, 0.01, 0.07],
+            [0.01, 0.02, 0.01, 0.01, 0.05],
+        ]
+        f[PNOISE] = ${PNOISE_VAR}
+    ID: |
+        c[ID] = sequential(${POPSIZE})
+        t[DOSE] = ${DOSE_TIMES}
+        t[OBS] ~ unif(1.0, 50.0; 5)
+        r[KA, CL, V1, Q, V2] ~ mnorm([0,0,0,0,0], f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv])
+FIT_EFFECTS:
+    POP: |
+        f[KA] ~ P1.0
+        f[CL] ~ P1.0
+        f[V1] ~ P20
+        f[Q] ~ P0.5
+        f[V2] ~ P100
+        f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv] ~ spd_matrix() [
+            [0.05],
+            [0.01, 0.05],
+            [0.01, 0.01, 0.05],
+            [0.01, 0.01, 0.01, 0.05],
+            [0.01, 0.01, 0.01, 0.01, 0.05],
+        ]
+        f[PNOISE] ~ P0.2
+    ID: |
+        r[KA, CL, V1, Q, V2] ~ mnorm([0,0,0,0,0], f[KA_isv,CL_isv,V1_isv,Q_isv,V2_isv])
+PREPROCESS: |
+MODEL_PARAMS: |
+    m[KA] = f[KA] * exp(r[KA])
+    m[CL] = f[CL] * exp(r[CL])
+    m[V1] = f[V1] * exp(r[V1])
+    m[Q] = f[Q] * exp(r[Q])
+    m[V2] = f[V2] * exp(r[V2])
+    m[ANOISE] = 0.001
+    m[PNOISE] = f[PNOISE]
+STATES: |
+DERIVATIVES: |
+    # s[DEPOT,CENTRAL,PERI] = @dep_two_cmp_cl{dose:@bolus{amt: c[AMT]}}
+    d[DEPOT] = @bolus{amt: c[AMT]} - m[KA]*s[DEPOT]
+    d[CENTRAL] = m[KA]*s[DEPOT] - s[CENTRAL]*m[CL]/m[V1] - s[CENTRAL]*m[Q]/m[V1]  + s[PERI]*m[Q]/m[V2]
+    d[PERI] = s[CENTRAL]*m[Q]/m[V1] - s[PERI]*m[Q]/m[V2]
+PREDICTIONS: |
+    p[DV_CENTRAL] = s[CENTRAL]/m[V1]
+    plabel[DV_CENTRAL] = 'Drug conc. (units)'
+    var = m[ANOISE]**2 + m[PNOISE]**2 * p[DV_CENTRAL]**2
+    c[DV_CENTRAL] ~ norm(p[DV_CENTRAL], var)
+POSTPROCESS: |
+ODE_SOLVER:
+    CPPLSODA:
+        atol: 1e-06
+        rtol: 1e-06
+        max_nsteps: 10000000
+        use_supersections: True
+        use_sens: True
+        hmin: 0.0
+FIT_METHODS:
+    - JOE:
+        ODE_SOLVER: {INHERIT: {}}
+        output_timing_flag: False
+        output_warning_detail_flag: True
+        max_n_main_iterations: 1
+        CONVERGER: {OBJ_INC: {}}
+        use_laplacian: False
+        use_chain: True
+        use_lm_jac: True
+        lm_method: lm
+        reset_re_flag: True
+COVARIANCE: {NO_COVARIANCE: {}}
+OUTPUT_SCRIPTS:
+    GEN: {output_mode: run, sim_time_step: 1.0, grph_list: ['OBS_vs_TIME']}
+    FIT:
+        output_mode: run
+        sim_time_step: 1.0
+        grph_list: ['OBS_vs_TIME']
+        vpc_list: ['OBS_vs_TIME_VPC']
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}
