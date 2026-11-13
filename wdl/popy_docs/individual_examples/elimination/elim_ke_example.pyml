@@ -30,6 +30,6 @@ ODE_SOLVER:
 FIT_METHODS: [ND: {}]
 OUTPUT_SCRIPTS:
     GEN: {output_mode: run, sim_time_step: 1.0}
-    FIT: {output_mode: none, sim_time_step: 1.0}
-    COMP: {output_mode: none}
-    TUTSUM: {output_mode: none}
+    FIT: {output_mode: run, sim_time_step: 1.0}
+    COMP: {output_mode: run}
+    TUTSUM: {output_mode: run}
