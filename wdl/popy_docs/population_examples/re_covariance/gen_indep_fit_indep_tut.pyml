@@ -20,7 +20,7 @@ GEN_EFFECTS:
         # new: ISV on volume of distribution
         f[V_isv] = 0.1
     ID: |
-        c[ID] = sequential(200)
+        c[ID] = sequential(40)
         c[AMT] = 100.0
         t[RESET] = 0.0
         t[DOSE] = 1.0
